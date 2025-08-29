@@ -10,8 +10,7 @@ from sqlalchemy import func
 
 from app import db
 from app.models.client import Client
-from app.models.contract import (Contract, ContractAccessHistory,
-                                 ContractStatusHistory)
+from app.models.contract import Contract, ContractAccessHistory, ContractStatusHistory
 from app.models.user import User
 from app.services.contract_service import ContractService
 from app.services.notification_service import NotificationService

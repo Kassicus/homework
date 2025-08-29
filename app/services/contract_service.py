@@ -9,8 +9,7 @@ from sqlalchemy import and_, desc, or_
 
 from app import db
 from app.models.client import Client
-from app.models.contract import (Contract, ContractAccessHistory,
-                                 ContractStatusHistory)
+from app.models.contract import Contract, ContractAccessHistory, ContractStatusHistory
 from app.models.user import User
 from app.services.file_service import FileService
 
