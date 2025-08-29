@@ -2,6 +2,7 @@
 Client model for storing client information
 """
 from datetime import datetime
+
 from app import db
 
 

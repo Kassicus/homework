@@ -1,12 +1,15 @@
 """
 Unit tests for database models
 """
+from datetime import date, datetime, timedelta
+
 import pytest
-from datetime import datetime, date, timedelta
+
 from app import create_app, db
-from app.models.user import User
 from app.models.client import Client
-from app.models.contract import Contract, ContractStatusHistory, ContractAccessHistory
+from app.models.contract import (Contract, ContractAccessHistory,
+                                 ContractStatusHistory)
+from app.models.user import User
 
 
 @pytest.fixture

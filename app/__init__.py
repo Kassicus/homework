@@ -1,15 +1,16 @@
 """
 Contract Management Platform - Flask Application Factory
 """
-import os
 import logging
+import os
 from logging.handlers import RotatingFileHandler
+
+from dotenv import load_dotenv
 from flask import Flask
-from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager
 from flask_migrate import Migrate
+from flask_sqlalchemy import SQLAlchemy
 from flask_wtf.csrf import CSRFProtect
-from dotenv import load_dotenv
 
 # Load environment variables
 load_dotenv()
@@ -47,8 +48,8 @@ def create_app(config_name=None):
 
     # Register blueprints
     from app.routes.auth import auth_bp
-    from app.routes.contracts import contracts_bp
     from app.routes.clients import clients_bp
+    from app.routes.contracts import contracts_bp
     from app.routes.dashboard import dashboard_bp
 
     app.register_blueprint(auth_bp, url_prefix="/auth")
@@ -104,8 +105,9 @@ def setup_logging(app):
 
 def create_initial_admin(app):
     """Create initial admin user during first startup"""
-    from app.models.user import User
     import bcrypt
+
+    from app.models.user import User
 
     try:
         # Hash password directly here to avoid circular import

@@ -1,13 +1,14 @@
 """
 File service for handling document uploads and text extraction
 """
-import os
 import logging
+import os
 from datetime import datetime
-from werkzeug.utils import secure_filename
-from flask import current_app, request
+
 import PyPDF2
 from docx import Document
+from flask import current_app, request
+from werkzeug.utils import secure_filename
 
 # import textract  # Removed due to deprecation warnings
 from app import db

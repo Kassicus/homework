@@ -4,13 +4,14 @@ Dashboard routes for Contract Management Platform
 import logging
 from datetime import datetime, timedelta
 
-from flask import Blueprint, render_template, current_app, jsonify, request
-from flask_login import login_required, current_user
+from flask import Blueprint, current_app, jsonify, render_template, request
+from flask_login import current_user, login_required
 from sqlalchemy import func
 
 from app import db
-from app.models.contract import Contract, ContractStatusHistory, ContractAccessHistory
 from app.models.client import Client
+from app.models.contract import (Contract, ContractAccessHistory,
+                                 ContractStatusHistory)
 from app.models.user import User
 from app.services.contract_service import ContractService
 from app.services.notification_service import NotificationService

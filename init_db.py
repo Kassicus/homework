@@ -3,16 +3,19 @@ Database initialization script for Contract Management Platform
 """
 import os
 import sys
-from datetime import datetime, date, timedelta
+from datetime import date, datetime, timedelta
+
 from sqlalchemy import create_engine, text
 
 # Add the app directory to the Python path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from app import create_app, db
-from app.models.user import User
 from app.models.client import Client
-from app.models.contract import Contract, ContractStatusHistory, ContractAccessHistory
+from app.models.contract import (Contract, ContractAccessHistory,
+                                 ContractStatusHistory)
+from app.models.user import User
+
 
 def init_database():
     """Initialize the database with schema and sample data"""

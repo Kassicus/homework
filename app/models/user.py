@@ -2,7 +2,9 @@
 User model for authentication and authorization
 """
 from datetime import datetime
+
 from flask_login import UserMixin
+
 from app import db, login_manager
 
 

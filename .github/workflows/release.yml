@@ -6,6 +6,11 @@ on:
       - 'v*.*.*'
     branches: [main]
 
+permissions:
+  contents: write
+  issues: write
+  packages: write
+
 jobs:
   test:
     runs-on: ubuntu-latest

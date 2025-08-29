@@ -1,19 +1,14 @@
 """
 Client routes for Contract Management Platform
 """
-from flask import (
-    Blueprint,
-    render_template,
-    request,
-    flash,
-    redirect,
-    url_for,
-    current_app,
-)
-from flask_login import login_required, current_user
-from app.models.client import Client
-from app import db
 import logging
+
+from flask import (Blueprint, current_app, flash, redirect, render_template,
+                   request, url_for)
+from flask_login import current_user, login_required
+
+from app import db
+from app.models.client import Client
 
 logger = logging.getLogger(__name__)
 clients_bp = Blueprint("clients", __name__)

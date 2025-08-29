@@ -2,12 +2,15 @@
 Contract service for contract management operations
 """
 import logging
-from datetime import datetime, date, timedelta
-from sqlalchemy import or_, and_, desc
+from datetime import date, datetime, timedelta
+
 from flask import current_app, request
+from sqlalchemy import and_, desc, or_
+
 from app import db
-from app.models.contract import Contract, ContractStatusHistory, ContractAccessHistory
 from app.models.client import Client
+from app.models.contract import (Contract, ContractAccessHistory,
+                                 ContractStatusHistory)
 from app.models.user import User
 from app.services.file_service import FileService
 

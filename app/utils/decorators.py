@@ -1,10 +1,11 @@
 """
 Decorator utility functions for Contract Management Platform
 """
-from functools import wraps
-from flask import flash, redirect, url_for, current_app, request
-from flask_login import current_user
 import logging
+from functools import wraps
+
+from flask import current_app, flash, redirect, request, url_for
+from flask_login import current_user
 
 logger = logging.getLogger(__name__)
 
@@ -67,7 +68,8 @@ def validate_file_upload(f):
 
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        from app.utils.validators import validate_file_extension, validate_file_size
+        from app.utils.validators import (validate_file_extension,
+                                          validate_file_size)
 
         # Check if file was uploaded
         if "contract_file" in request.files:

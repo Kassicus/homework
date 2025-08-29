@@ -1,13 +1,15 @@
 """
 Integration tests for Flask application
 """
-import pytest
-import tempfile
 import os
+import tempfile
+
+import pytest
+
 from app import create_app, db
-from app.models.user import User
 from app.models.client import Client
 from app.models.contract import Contract
+from app.models.user import User
 
 
 @pytest.fixture

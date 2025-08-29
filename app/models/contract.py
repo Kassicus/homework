@@ -1,9 +1,11 @@
 """
 Contract models for contract management
 """
-from datetime import datetime, date
-from app import db
+from datetime import date, datetime
+
 from sqlalchemy import event
+
+from app import db
 
 
 class Contract(db.Model):

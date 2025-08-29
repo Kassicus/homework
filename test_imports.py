@@ -2,8 +2,8 @@
 """
 Test script to verify imports work correctly
 """
-import sys
 import os
+import sys
 
 # Add the current directory to Python path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -17,9 +17,9 @@ def test_imports():
         from app import create_app, db
         
         print("✓ Importing models...")
-        from app.models.user import User
         from app.models.client import Client
         from app.models.contract import Contract
+        from app.models.user import User
         
         print("✓ Importing services...")
         from app.services.auth_service import AuthService
@@ -31,8 +31,8 @@ def test_imports():
         from app.routes.contracts import contracts_bp
         
         print("✓ Importing utilities...")
-        from app.utils.validators import validate_file_extension
         from app.utils.helpers import format_file_size
+        from app.utils.validators import validate_file_extension
         
         print("\n🎉 All imports successful! No circular import issues detected.")
         return True

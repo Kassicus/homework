@@ -1,23 +1,17 @@
 """
 Contract routes for Contract Management Platform
 """
-from flask import (
-    Blueprint,
-    render_template,
-    request,
-    jsonify,
-    flash,
-    redirect,
-    url_for,
-    current_app,
-)
-from flask_login import login_required, current_user
-from app.services.contract_service import ContractService
-from app.services.file_service import FileService
+import logging
+
+from flask import (Blueprint, current_app, flash, jsonify, redirect,
+                   render_template, request, url_for)
+from flask_login import current_user, login_required
+
+from app import db
 from app.models.client import Client
 from app.models.contract import Contract
-from app import db
-import logging
+from app.services.contract_service import ContractService
+from app.services.file_service import FileService
 
 logger = logging.getLogger(__name__)
 contracts_bp = Blueprint("contracts", __name__)

@@ -1,20 +1,14 @@
 """
 Authentication routes for Contract Management Platform
 """
-from flask import (
-    Blueprint,
-    render_template,
-    redirect,
-    url_for,
-    request,
-    flash,
-    current_app,
-)
-from flask_login import login_user, logout_user, login_required, current_user
+from flask import (Blueprint, current_app, flash, redirect, render_template,
+                   request, url_for)
+from flask_login import current_user, login_required, login_user, logout_user
 from werkzeug.urls import url_parse
-from app.services.auth_service import AuthService
-from app.models.user import User
+
 from app import db
+from app.models.user import User
+from app.services.auth_service import AuthService
 
 auth_bp = Blueprint("auth", __name__)
 
