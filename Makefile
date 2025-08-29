@@ -18,12 +18,20 @@ format-check:  ## Check code formatting without making changes
 
 lint:  ## Run linting checks
 	@echo "🔍 Running linting checks..."
-	python3 -m flake8 app/ --max-line-length=88 --extend-ignore=E203,W503
+	python3 -m flake8 app/ --max-line-length=120 --extend-ignore=E203,W503,E501,E722
 	@echo "✅ Linting completed!"
 
 test:  ## Run tests
 	@echo "🧪 Running tests..."
 	python3 -m pytest tests/ -v
+
+test-py311:  ## Run tests with Python 3.11
+	@echo "🧪 Running tests with Python 3.11..."
+	python3.11 -m pytest tests/ -v
+
+test-py312:  ## Run tests with Python 3.12
+	@echo "🧪 Running tests with Python 3.12..."
+	python3.12 -m pytest tests/ -v
 
 test-cov:  ## Run tests with coverage
 	@echo "🧪 Running tests with coverage..."

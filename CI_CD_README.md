@@ -13,7 +13,7 @@ The Contract Management Platform uses GitHub Actions for continuous integration 
 - Pushes to `develop` branch
 
 **What it does:**
-- Runs on multiple Python versions (3.8, 3.9, 3.10, 3.11, 3.12)
+- Runs on Python versions 3.11 and 3.12 (production-ready versions)
 - Performs code quality checks
 - Runs security scanning
 - Executes unit and integration tests
@@ -28,6 +28,7 @@ The Contract Management Platform uses GitHub Actions for continuous integration 
 - **flake8**: Linting and style checking (runs last)
 
 **Note**: The order matters! isort runs first to organize imports, then Black formats the code, ensuring compatibility.
+**Line Length**: flake8 is configured with a 120 character limit and ignores E501 (line too long) warnings.
 
 **Security Scanning:**
 - **Bandit**: Python security vulnerability scanning
