@@ -1,0 +1,190 @@
+"""
+Authentication routes for Contract Management Platform
+"""
+from flask import Blueprint, render_template, redirect, url_for, request, flash, current_app
+from flask_login import login_user, logout_user, login_required, current_user
+from werkzeug.urls import url_parse
+from app.services.auth_service import AuthService
+from app.models.user import User
+from app import db
+
+auth_bp = Blueprint('auth', __name__)
+
+@auth_bp.route('/login', methods=['GET', 'POST'])
+def login():
+    """User login page"""
+    if current_user.is_authenticated:
+        return redirect(url_for('dashboard.index'))
+    
+    if request.method == 'POST':
+        username = request.form.get('username')
+        password = request.form.get('password')
+        remember = request.form.get('remember', False)
+        
+        if not username or not password:
+            flash('Please enter both username and password.', 'error')
+            return render_template('auth/login.html')
+        
+        try:
+            user = AuthService.authenticate_user(username, password)
+            
+            if user:
+                login_user(user, remember=remember)
+                
+                # Log successful login
+                current_app.logger.info(f"User logged in successfully: {username}")
+                
+                # Redirect to next page or dashboard
+                next_page = request.args.get('next')
+                if not next_page or url_parse(next_page).netloc != '':
+                    next_page = url_for('dashboard.index')
+                
+                flash(f'Welcome back, {user.username}!', 'success')
+                return redirect(next_page)
+            else:
+                flash('Invalid username or password.', 'error')
+                
+        except Exception as e:
+            current_app.logger.error(f"Login error for user {username}: {e}")
+            flash('An error occurred during login. Please try again.', 'error')
+    
+    return render_template('auth/login.html')
+
+@auth_bp.route('/logout')
+@login_required
+def logout():
+    """User logout"""
+    username = current_user.username
+    logout_user()
+    
+    current_app.logger.info(f"User logged out: {username}")
+    flash('You have been logged out successfully.', 'info')
+    
+    return redirect(url_for('auth.login'))
+
+@auth_bp.route('/register', methods=['GET', 'POST'])
+def register():
+    """User registration page"""
+    if current_user.is_authenticated:
+        return redirect(url_for('dashboard.index'))
+    
+    if request.method == 'POST':
+        username = request.form.get('username')
+        email = request.form.get('email')
+        password = request.form.get('password')
+        confirm_password = request.form.get('confirm_password')
+        
+        # Validation
+        if not all([username, email, password, confirm_password]):
+            flash('All fields are required.', 'error')
+            return render_template('auth/register.html')
+        
+        if password != confirm_password:
+            flash('Passwords do not match.', 'error')
+            return render_template('auth/register.html')
+        
+        if len(password) < 6:
+            flash('Password must be at least 6 characters long.', 'error')
+            return render_template('auth/register.html')
+        
+        try:
+            # Check if username or email already exists
+            if User.query.filter_by(username=username).first():
+                flash('Username already exists. Please choose a different one.', 'error')
+                return render_template('auth/register.html')
+            
+            if User.query.filter_by(email=email).first():
+                flash('Email already exists. Please use a different one.', 'error')
+                return render_template('auth/register.html')
+            
+            # Create new user
+            user = AuthService.register_user(username, email, password)
+            
+            current_app.logger.info(f"New user registered: {username} ({email})")
+            
+            flash('Registration successful! Please log in.', 'success')
+            return redirect(url_for('auth.login'))
+            
+        except Exception as e:
+            current_app.logger.error(f"Registration error for user {username}: {e}")
+            flash('An error occurred during registration. Please try again.', 'error')
+    
+    return render_template('auth/register.html')
+
+@auth_bp.route('/profile')
+@login_required
+def profile():
+    """User profile page"""
+    return render_template('auth/profile.html')
+
+@auth_bp.route('/change-password', methods=['GET', 'POST'])
+@login_required
+def change_password():
+    """Change password page"""
+    if request.method == 'POST':
+        current_password = request.form.get('current_password')
+        new_password = request.form.get('new_password')
+        confirm_password = request.form.get('confirm_password')
+        
+        if not all([current_password, new_password, confirm_password]):
+            flash('All fields are required.', 'error')
+            return render_template('auth/change_password.html')
+        
+        if new_password != confirm_password:
+            flash('New passwords do not match.', 'error')
+            return render_template('auth/change_password.html')
+        
+        if len(new_password) < 6:
+            flash('New password must be at least 6 characters long.', 'error')
+            return render_template('auth/change_password.html')
+        
+        try:
+            AuthService.change_password(
+                current_user.id, 
+                current_password, 
+                new_password
+            )
+            
+            flash('Password changed successfully!', 'success')
+            return redirect(url_for('auth.profile'))
+            
+        except ValueError as e:
+            flash(str(e), 'error')
+        except Exception as e:
+            current_app.logger.error(f"Password change error for user {current_user.username}: {e}")
+            flash('An error occurred while changing password. Please try again.', 'error')
+    
+    return render_template('auth/change_password.html')
+
+@auth_bp.route('/reset-password', methods=['GET', 'POST'])
+def reset_password():
+    """Password reset page"""
+    if current_user.is_authenticated:
+        return redirect(url_for('dashboard.index'))
+    
+    if request.method == 'POST':
+        email = request.form.get('email')
+        
+        if not email:
+            flash('Please enter your email address.', 'error')
+            return render_template('auth/reset_password.html')
+        
+        try:
+            # Generate temporary password
+            temp_password = AuthService.reset_password(email)
+            
+            current_app.logger.info(f"Password reset requested for email: {email}")
+            
+            # TODO: Send email with temporary password
+            flash('If an account with that email exists, a temporary password has been sent.', 'info')
+            return redirect(url_for('auth.login'))
+            
+        except ValueError:
+            # Don't reveal if email exists or not
+            flash('If an account with that email exists, a temporary password has been sent.', 'info')
+            return redirect(url_for('auth.login'))
+        except Exception as e:
+            current_app.logger.error(f"Password reset error for email {email}: {e}")
+            flash('An error occurred during password reset. Please try again.', 'error')
+    
+    return render_template('auth/reset_password.html')
