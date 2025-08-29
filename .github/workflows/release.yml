@@ -1,0 +1,311 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+    branches: [main]
+
+permissions:
+  contents: write
+  issues: write
+  packages: write
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [3.11, 3.12]
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+          
+      - name: Install dependencies
+        run: |
+          python3 -m pip install --upgrade pip
+          pip3 install -r requirements.txt
+          
+      - name: Run full test suite
+        run: |
+          python3 -m pytest tests/ -v --cov=app --cov-report=xml --cov-report=html
+          
+      - name: Upload coverage reports
+        uses: codecov/codecov-action@v3
+        with:
+          file: ./coverage.xml
+          flags: release-tests
+          name: codecov-umbrella
+          fail_ci_if_error: false
+
+  build-package:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: 3.12
+          
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential devscripts debhelper dh-python python3-all python3-setuptools
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install build wheel
+          
+      - name: Get version from tag
+        id: get_version
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/}
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "version_clean=${VERSION#v}" >> $GITHUB_OUTPUT
+          echo "version_major=${VERSION#v}" | cut -d. -f1 >> $GITHUB_OUTPUT
+          echo "version_minor=${VERSION#v}" | cut -d. -f2 >> $GITHUB_OUTPUT
+          echo "version_patch=${VERSION#v}" | cut -d. -f3 >> $GITHUB_OUTPUT
+          
+      - name: Build Python package
+        run: |
+          python -m build --wheel --outdir dist/
+          
+      - name: Build .deb package
+        run: |
+          # Create package directory structure
+          PACKAGE_NAME="contract-manager"
+          VERSION="${{ steps.get_version.outputs.version_clean }}"
+          ARCH="amd64"
+          
+          mkdir -p ${PACKAGE_NAME}_${VERSION}_${ARCH}
+          mkdir -p ${PACKAGE_NAME}_${VERSION}_${ARCH}/DEBIAN
+          mkdir -p ${PACKAGE_NAME}_${VERSION}_${ARCH}/opt/${PACKAGE_NAME}
+          mkdir -p ${PACKAGE_NAME}_${VERSION}_${ARCH}/var/lib/${PACKAGE_NAME}
+          mkdir -p ${PACKAGE_NAME}_${VERSION}_${ARCH}/var/log/${PACKAGE_NAME}
+          mkdir -p ${PACKAGE_NAME}_${VERSION}_${ARCH}/etc/${PACKAGE_NAME}
+          mkdir -p ${PACKAGE_NAME}_${VERSION}_${ARCH}/usr/share/doc/${PACKAGE_NAME}
+          
+          # Copy application files
+          cp -r app/ ${PACKAGE_NAME}_${VERSION}_${ARCH}/opt/${PACKAGE_NAME}/
+          cp -r templates/ ${PACKAGE_NAME}_${VERSION}_${ARCH}/opt/${PACKAGE_NAME}/ 2>/dev/null || true
+          cp -r static/ ${PACKAGE_NAME}_${VERSION}_${ARCH}/opt/${PACKAGE_NAME}/ 2>/dev/null || true
+          cp *.py ${PACKAGE_NAME}_${VERSION}_${ARCH}/opt/${PACKAGE_NAME}/
+          cp requirements.txt ${PACKAGE_NAME}_${VERSION}_${ARCH}/opt/${PACKAGE_NAME}/
+          cp README.md ${PACKAGE_NAME}_${VERSION}_${ARCH}/usr/share/doc/${PACKAGE_NAME}/
+          
+          # Create control file
+          cat > ${PACKAGE_NAME}_${VERSION}_${ARCH}/DEBIAN/control << EOF
+          Package: ${PACKAGE_NAME}
+          Version: ${VERSION}
+          Architecture: ${ARCH}
+          Maintainer: Contract Management Team <admin@example.com>
+          Depends: python3 (>= 3.8), python3-pip, nginx, sqlite3
+          Description: Contract Management Platform
+           A centralized contract management platform to automate manual workflows,
+           store contract documents, track metadata, and manage the complete
+           contract lifecycle.
+          EOF
+          
+          # Create postinst script
+          cat > ${PACKAGE_NAME}_${VERSION}_${ARCH}/DEBIAN/postinst << EOF
+          #!/bin/bash
+          set -e
+          
+          # Install Python dependencies
+          cd /opt/${PACKAGE_NAME}
+          python3 -m pip install -r requirements.txt
+          
+          # Create necessary directories
+          mkdir -p /var/lib/${PACKAGE_NAME}/uploads
+          mkdir -p /var/log/${PACKAGE_NAME}
+          mkdir -p /etc/${PACKAGE_NAME}
+          
+          # Set permissions
+          chown -R www-data:www-data /var/lib/${PACKAGE_NAME}
+          chown -R www-data:www-data /var/log/${PACKAGE_NAME}
+          chmod 755 /opt/${PACKAGE_NAME}
+          chmod 755 /var/lib/${PACKAGE_NAME}
+          chmod 755 /var/log/${PACKAGE_NAME}
+          
+          # Initialize database
+          cd /opt/${PACKAGE_NAME}
+          python3 init_db.py
+          
+          echo "Contract Manager ${VERSION} installed successfully!"
+          echo "Access the application at: http://your-server-ip"
+          echo "Default admin credentials: admin/admin123"
+          EOF
+          
+          chmod 755 ${PACKAGE_NAME}_${VERSION}_${ARCH}/DEBIAN/postinst
+          
+          # Build .deb package
+          dpkg-deb --build ${PACKAGE_NAME}_${VERSION}_${ARCH}
+          
+          # Clean up
+          rm -rf ${PACKAGE_NAME}_${VERSION}_${ARCH}
+          
+      - name: Upload package artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: contract-manager-package
+          path: |
+            dist/
+            *.deb
+            *.whl
+
+  create-release:
+    needs: [test, build-package]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: contract-manager-package
+          
+      - name: Get version from tag
+        id: get_version
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/}
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "version_clean=${VERSION#v}" >> $GITHUB_OUTPUT
+          
+      - name: Generate release notes
+        id: release_notes
+        run: |
+          # Get commits since last tag
+          PREVIOUS_TAG=$(git describe --tags --abbrev=0 HEAD~1 2>/dev/null || echo "")
+          
+          if [ -n "$PREVIOUS_TAG" ]; then
+            COMMITS=$(git log --oneline ${PREVIOUS_TAG}..HEAD --pretty=format:"- %s")
+          else
+            COMMITS=$(git log --oneline --pretty=format:"- %s" | head -20)
+          fi
+          
+          # Generate release notes
+          cat > RELEASE_NOTES.md << EOF
+          # Contract Management Platform ${VERSION}
+          
+          ## 🚀 What's New
+          
+          This release includes the following improvements and bug fixes:
+          
+          ${COMMITS}
+          
+          ## 📦 Installation
+          
+          ### .deb Package (Ubuntu/Debian)
+          \`\`\`bash
+          sudo dpkg -i contract-manager_${VERSION_clean}_amd64.deb
+          sudo apt-get install -f  # Install any missing dependencies
+          \`\`\`
+          
+          ### Manual Installation
+          \`\`\`bash
+          git clone <repository-url>
+          cd contract-manager
+          git checkout ${VERSION}
+          python3 -m venv venv
+          source venv/bin/activate
+          pip install -r requirements.txt
+          python3 init_db.py
+          python3 run.py
+          \`\`\`
+          
+          ## 🔧 Configuration
+          
+          Copy the example environment file and configure:
+          \`\`\`bash
+          cp env.example .env
+          # Edit .env with your settings
+          \`\`\`
+          
+          ## 🚀 Quick Start
+          
+          1. Install the package
+          2. Access the application at: http://your-server-ip
+          3. Login with default credentials: admin/admin123
+          4. Change the default password immediately
+          
+          ## 📋 System Requirements
+          
+          - Python 3.8+
+          - SQLite3
+          - 2GB+ RAM
+          - 125GB+ storage for documents
+          
+          ## 🆘 Support
+          
+          For issues and questions, please use GitHub Issues.
+          
+          ---
+          *Release generated automatically by GitHub Actions*
+          EOF
+          
+          echo "notes<<EOF" >> $GITHUB_OUTPUT
+          cat RELEASE_NOTES.md >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+          
+      - name: Create GitHub Release
+        uses: actions/create-release@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ steps.get_version.outputs.version }}
+          release_name: Contract Manager ${{ steps.get_version.outputs.version }}
+          body: ${{ steps.release_notes.outputs.notes }}
+          draft: false
+          prerelease: false
+          
+      - name: Upload Release Assets
+        uses: actions/upload-release-asset@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./contract-manager_${{ steps.get_version.outputs.version_clean }}_amd64.deb
+          asset_name: contract-manager_${{ steps.get_version.outputs.version_clean }}_amd64.deb
+          asset_content_type: application/vnd.debian.binary-package
+          
+      - name: Upload Python Wheel
+        uses: actions/upload-release-asset@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./dist/*.whl
+          asset_name: contract-manager-${{ steps.get_version.outputs.version_clean }}-py3-none-any.whl
+          asset_content_type: application/octet-stream
+
+  notify-success:
+    needs: [test, build-package, create-release]
+    runs-on: ubuntu-latest
+    if: success()
+    steps:
+      - name: Notify success
+        run: |
+          echo "🎉 Release ${{ github.ref }} created successfully!"
+          echo "✅ All tests passed"
+          echo "✅ Package built successfully"
+          echo "✅ GitHub release created"
+          echo "✅ Assets uploaded"
+          
+  notify-failure:
+    needs: [test, build-package, create-release]
+    runs-on: ubuntu-latest
+    if: failure()
+    steps:
+      - name: Notify failure
+        run: |
+          echo "❌ Release ${{ github.ref }} failed!"
+          echo "Please check the workflow logs for details."
