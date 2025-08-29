@@ -4,10 +4,12 @@ Client model for storing client information
 from datetime import datetime
 from app import db
 
+
 class Client(db.Model):
     """Client model for storing client information"""
-    __tablename__ = 'clients'
-    
+
+    __tablename__ = "clients"
+
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(200), nullable=False, index=True)
     organization = db.Column(db.String(200), nullable=True, index=True)
@@ -15,44 +17,46 @@ class Client(db.Model):
     phone = db.Column(db.String(20), nullable=True)
     address = db.Column(db.Text, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
-    
+    updated_at = db.Column(
+        db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False
+    )
+
     # Relationships
-    contracts = db.relationship('Contract', backref='client', lazy='dynamic')
-    
+    contracts = db.relationship("Contract", backref="client", lazy="dynamic")
+
     def __repr__(self):
-        return f'<Client {self.name}>'
-    
+        return f"<Client {self.name}>"
+
     def to_dict(self):
         """Convert client to dictionary for API responses"""
         return {
-            'id': self.id,
-            'name': self.name,
-            'organization': self.organization,
-            'email': self.email,
-            'phone': self.phone,
-            'address': self.address,
-            'created_at': self.created_at.isoformat() if self.created_at else None,
-            'updated_at': self.updated_at.isoformat() if self.updated_at else None,
-            'contract_count': self.contracts.count()
+            "id": self.id,
+            "name": self.name,
+            "organization": self.organization,
+            "email": self.email,
+            "phone": self.phone,
+            "address": self.address,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
+            "contract_count": self.contracts.count(),
         }
-    
+
     @property
     def display_name(self):
         """Return display name (organization + name or just name)"""
         if self.organization:
             return f"{self.organization} - {self.name}"
         return self.name
-    
+
     def get_active_contracts(self):
         """Get all active contracts for this client"""
-        return self.contracts.filter_by(status='active').all()
-    
+        return self.contracts.filter_by(status="active").all()
+
     def get_expiring_contracts(self, days=30):
         """Get contracts expiring within specified days"""
         from datetime import datetime, timedelta
+
         cutoff_date = datetime.utcnow().date() + timedelta(days=days)
         return self.contracts.filter(
-            Contract.status == 'active',
-            Contract.expiration_date <= cutoff_date
+            Contract.status == "active", Contract.expiration_date <= cutoff_date
         ).all()

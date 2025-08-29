@@ -6,9 +6,9 @@ from .client import Client
 from .contract import Contract, ContractStatusHistory, ContractAccessHistory
 
 __all__ = [
-    'User',
-    'Client', 
-    'Contract',
-    'ContractStatusHistory',
-    'ContractAccessHistory'
+    "User",
+    "Client",
+    "Contract",
+    "ContractStatusHistory",
+    "ContractAccessHistory",
 ]
