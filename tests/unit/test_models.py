@@ -34,6 +34,36 @@ def db_session(app):
         db.drop_all()
 
 
+@pytest.fixture
+def test_user(db_session):
+    """Create a test user for testing"""
+    user = User(
+        username='testuser',
+        email='test@example.com',
+        is_active=True,
+        is_admin=False
+    )
+    user.set_password('password123')
+    db_session.add(user)
+    db_session.commit()
+    return user
+
+
+@pytest.fixture
+def test_client(db_session):
+    """Create a test client for testing"""
+    client = Client(
+        name='Test Client',
+        organization='Test Org',
+        email='client@example.com',
+        phone='+1-555-0123',
+        address='123 Test St, Test City, TC 12345'
+    )
+    db_session.add(client)
+    db_session.commit()
+    return client
+
+
 class TestUserModel:
     """Test User model functionality"""
     
@@ -120,27 +150,17 @@ class TestClientModel:
 class TestContractModel:
     """Test Contract model functionality"""
     
-    def test_contract_creation(self, db_session):
+    def test_contract_creation(self, test_user, test_client, db_session):
         """Test contract creation"""
-        # Create a user and client first
-        user = User(username='testuser', email='test@example.com')
-        user.set_password('password123')
-        db_session.add(user)
-        
-        client = Client(name='Test Client')
-        db_session.add(client)
-        
-        db_session.commit()
-        
         contract = Contract(
             title='Test Contract',
             description='Test contract description',
-            client_id=client.id,
+            client_id=test_client.id,
             contract_type='Service',
             status=Contract.STATUS_DRAFT,
             contract_value=10000.00,
             created_date=date.today(),
-            created_by=user.id
+            created_by=test_user.id
         )
         
         db_session.add(contract)
@@ -149,24 +169,16 @@ class TestContractModel:
         assert contract.id is not None
         assert contract.title == 'Test Contract'
         assert contract.status == Contract.STATUS_DRAFT
-        assert contract.client_id == client.id
-        assert contract.created_by == user.id
+        assert contract.client_id == test_client.id
+        assert contract.created_by == test_user.id
         
-    def test_contract_status_update(self, db_session):
+    def test_contract_status_update(self, test_user, test_client, db_session):
         """Test contract status update"""
-        # Create test data
-        user = User(username='testuser', email='test@example.com')
-        user.set_password('password123')
-        db_session.add(user)
-        
-        client = Client(name='Test Client')
-        db_session.add(client)
-        
         contract = Contract(
             title='Test Contract',
-            client_id=client.id,
+            client_id=test_client.id,
             contract_type='Service',
-            created_by=user.id
+            created_by=test_user.id
         )
         
         db_session.add(contract)
@@ -175,7 +187,7 @@ class TestContractModel:
         # Update status
         status_history = contract.update_status(
             Contract.STATUS_ACTIVE, 
-            user.id, 
+            test_user.id, 
             'Contract activated'
         )
         
@@ -184,61 +196,45 @@ class TestContractModel:
         assert contract.status == Contract.STATUS_ACTIVE
         assert status_history.old_status == Contract.STATUS_DRAFT
         assert status_history.new_status == Contract.STATUS_ACTIVE
-        assert status_history.changed_by == user.id
+        assert status_history.changed_by == test_user.id
         
-    def test_contract_soft_delete(self, db_session):
+    def test_contract_soft_delete(self, test_user, test_client, db_session):
         """Test contract soft delete"""
-        # Create test data
-        user = User(username='testuser', email='test@example.com')
-        user.set_password('password123')
-        db_session.add(user)
-        
-        client = Client(name='Test Client')
-        db_session.add(client)
-        
         contract = Contract(
             title='Test Contract',
-            client_id=client.id,
+            client_id=test_client.id,
             contract_type='Service',
-            created_by=user.id
+            created_by=test_user.id
         )
         
         db_session.add(contract)
         db_session.commit()
         
         # Soft delete
-        contract.soft_delete(user.id)
+        contract.soft_delete(test_user.id)
         db_session.commit()
         
         assert contract.deleted_at is not None
         assert contract.status == Contract.STATUS_DELETED
         
-    def test_contract_is_expired(self, db_session):
+    def test_contract_is_expired(self, test_user, test_client, db_session):
         """Test contract expiration check"""
-        # Create test data
-        user = User(username='testuser', email='test@example.com')
-        user.set_password('password123')
-        db_session.add(user)
-        
-        client = Client(name='Test Client')
-        db_session.add(client)
-        
         # Contract with past expiration date
         expired_contract = Contract(
             title='Expired Contract',
-            client_id=client.id,
+            client_id=test_client.id,
             contract_type='Service',
             expiration_date=date.today() - timedelta(days=1),
-            created_by=user.id
+            created_by=test_user.id
         )
         
         # Contract with future expiration date
         active_contract = Contract(
             title='Active Contract',
-            client_id=client.id,
+            client_id=test_client.id,
             contract_type='Service',
             expiration_date=date.today() + timedelta(days=30),
-            created_by=user.id
+            created_by=test_user.id
         )
         
         db_session.add_all([expired_contract, active_contract])
@@ -247,21 +243,13 @@ class TestContractModel:
         assert expired_contract.is_expired() is True
         assert active_contract.is_expired() is False
         
-    def test_contract_to_dict(self, db_session):
+    def test_contract_to_dict(self, test_user, test_client, db_session):
         """Test contract to dictionary conversion"""
-        # Create test data
-        user = User(username='testuser', email='test@example.com')
-        user.set_password('password123')
-        db_session.add(user)
-        
-        client = Client(name='Test Client')
-        db_session.add(client)
-        
         contract = Contract(
             title='Test Contract',
-            client_id=client.id,
+            client_id=test_client.id,
             contract_type='Service',
-            created_by=user.id
+            created_by=test_user.id
         )
         
         db_session.add(contract)
@@ -270,7 +258,7 @@ class TestContractModel:
         contract_dict = contract.to_dict()
         
         assert contract_dict['title'] == 'Test Contract'
-        assert contract_dict['client_id'] == client.id
+        assert contract_dict['client_id'] == test_client.id
         assert contract_dict['status'] == Contract.STATUS_DRAFT
         assert 'is_deleted' in contract_dict
 
@@ -326,6 +314,7 @@ class TestContractAccessHistory:
         assert access.accessed_by == 1
         assert access.access_type == 'view'
         assert access.ip_address == '127.0.0.1'
+        assert access.user_agent == 'Test Browser'
         
     def test_access_history_to_dict(self, db_session):
         """Test access history to dictionary conversion"""

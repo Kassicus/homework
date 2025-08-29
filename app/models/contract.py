@@ -70,6 +70,7 @@ class Contract(db.Model):
         STATUS_EXPIRED,
         STATUS_TERMINATED,
         STATUS_RENEWED,
+        STATUS_DELETED,
     ]
 
     def __repr__(self):
