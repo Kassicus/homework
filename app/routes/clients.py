@@ -17,6 +17,7 @@ from flask_login import current_user, login_required
 from app import db
 from app.models.client import Client
 
+
 logger = logging.getLogger(__name__)
 clients_bp = Blueprint("clients", __name__)
 

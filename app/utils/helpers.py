@@ -1,8 +1,8 @@
 """
 Helper utility functions for Contract Management Platform
 """
-import locale
 from datetime import date, datetime
+import locale
 
 
 def format_file_size(size_bytes):

@@ -58,6 +58,9 @@ class Client(db.Model):
         from datetime import datetime, timedelta
 
         cutoff_date = datetime.utcnow().date() + timedelta(days=days)
-        return self.contracts.filter(
-            Contract.status == "active", Contract.expiration_date <= cutoff_date
-        ).all()
+        # Use the relationship to filter contracts
+        return (
+            self.contracts.filter_by(status="active")
+            .filter(self.contracts.any(expiration_date <= cutoff_date))
+            .all()
+        )

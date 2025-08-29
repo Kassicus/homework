@@ -1,9 +1,9 @@
 """
 File service for handling document uploads and text extraction
 """
+from datetime import datetime
 import logging
 import os
-from datetime import datetime
 
 import PyPDF2
 from docx import Document
@@ -13,6 +13,7 @@ from werkzeug.utils import secure_filename
 # import textract  # Removed due to deprecation warnings
 from app import db
 from app.models.contract import Contract
+
 
 logger = logging.getLogger(__name__)
 

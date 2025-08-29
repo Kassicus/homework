@@ -201,9 +201,9 @@ class ContractStatusHistory(db.Model):
             "old_status": self.old_status,
             "new_status": self.new_status,
             "changed_by": self.changed_by,
-            "changed_by_username": self.changed_by_user.username
-            if self.changed_by_user
-            else None,
+            "changed_by_username": (
+                self.changed_by_user.username if self.changed_by_user else None
+            ),
             "change_reason": self.change_reason,
             "changed_at": self.changed_at.isoformat() if self.changed_at else None,
         }
@@ -235,9 +235,9 @@ class ContractAccessHistory(db.Model):
             "id": self.id,
             "contract_id": self.contract_id,
             "accessed_by": self.accessed_by,
-            "accessed_by_username": self.accessed_by_user.username
-            if self.accessed_by_user
-            else None,
+            "accessed_by_username": (
+                self.accessed_by_user.username if self.accessed_by_user else None
+            ),
             "access_type": self.access_type,
             "ip_address": self.ip_address,
             "user_agent": self.user_agent,

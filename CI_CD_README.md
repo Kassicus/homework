@@ -23,9 +23,11 @@ The Contract Management Platform uses GitHub Actions for continuous integration 
 - Comments on PRs with results
 
 **Code Quality Checks:**
-- **Black**: Code formatting validation
-- **isort**: Import sorting validation
-- **flake8**: Linting and style checking
+- **isort**: Import sorting validation (runs first)
+- **Black**: Code formatting validation (runs second)
+- **flake8**: Linting and style checking (runs last)
+
+**Note**: The order matters! isort runs first to organize imports, then Black formats the code, ensuring compatibility.
 
 **Security Scanning:**
 - **Bandit**: Python security vulnerability scanning
@@ -139,9 +141,11 @@ pytest tests/unit/test_models.py::TestUserModel::test_user_creation
 
 ### Formatting
 
-- **Black**: Code formatting (line length: 88 characters)
-- **isort**: Import sorting and organization
-- **flake8**: Linting with specific rule exceptions
+- **isort**: Import sorting and organization (runs first)
+- **Black**: Code formatting (line length: 88 characters, runs second)
+- **flake8**: Linting with specific rule exceptions (runs last)
+
+**Important**: Always run isort before Black to prevent conflicts. Use the provided `format_code.py` script for consistent formatting.
 
 ### Pre-commit Hooks
 
@@ -340,9 +344,12 @@ pytest -v -s --tb=long
 # Run tests
 pytest
 
-# Format code
-black app/
+# Format code (recommended order)
+python3 format_code.py
+
+# Or format manually in correct order
 isort app/
+black app/
 
 # Lint code
 flake8 app/

@@ -1,8 +1,8 @@
 """
 Dashboard routes for Contract Management Platform
 """
-import logging
 from datetime import datetime, timedelta
+import logging
 
 from flask import Blueprint, current_app, jsonify, render_template, request
 from flask_login import current_user, login_required
@@ -14,6 +14,7 @@ from app.models.contract import Contract, ContractAccessHistory, ContractStatusH
 from app.models.user import User
 from app.services.contract_service import ContractService
 from app.services.notification_service import NotificationService
+
 
 logger = logging.getLogger(__name__)
 dashboard_bp = Blueprint("dashboard", __name__)

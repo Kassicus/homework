@@ -1,8 +1,8 @@
 """
 Configuration classes for Contract Management Platform
 """
-import os
 from datetime import timedelta
+import os
 
 
 class Config:

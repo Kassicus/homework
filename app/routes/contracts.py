@@ -21,6 +21,7 @@ from app.models.contract import Contract
 from app.services.contract_service import ContractService
 from app.services.file_service import FileService
 
+
 logger = logging.getLogger(__name__)
 contracts_bp = Blueprint("contracts", __name__)
 

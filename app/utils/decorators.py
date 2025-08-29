@@ -1,11 +1,12 @@
 """
 Decorator utility functions for Contract Management Platform
 """
-import logging
 from functools import wraps
+import logging
 
 from flask import current_app, flash, redirect, request, url_for
 from flask_login import current_user
+
 
 logger = logging.getLogger(__name__)
 

@@ -13,9 +13,9 @@ from flask import (
 from flask_login import current_user, login_required, login_user, logout_user
 from werkzeug.urls import url_parse
 
-from app import db
 from app.models.user import User
 from app.services.auth_service import AuthService
+
 
 auth_bp = Blueprint("auth", __name__)
 
@@ -112,7 +112,7 @@ def register():
                 return render_template("auth/register.html")
 
             # Create new user
-            user = AuthService.register_user(username, email, password)
+            AuthService.register_user(username, email, password)
 
             current_app.logger.info(f"New user registered: {username} ({email})")
 
@@ -188,7 +188,7 @@ def reset_password():
 
         try:
             # Generate temporary password
-            temp_password = AuthService.reset_password(email)
+            AuthService.reset_password(email)
 
             current_app.logger.info(f"Password reset requested for email: {email}")
 

@@ -1,8 +1,8 @@
 """
 Authentication service for user management
 """
-import logging
 from datetime import datetime, timedelta
+import logging
 
 import bcrypt
 from flask import current_app, request
@@ -11,6 +11,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 
 from app import db
 from app.models.user import User
+
 
 logger = logging.getLogger(__name__)
 

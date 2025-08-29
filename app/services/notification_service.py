@@ -1,12 +1,13 @@
 """
 Notification service for contract alerts and user notifications
 """
-import logging
 from datetime import datetime, timedelta
+import logging
 
 from app import db
 from app.models.contract import Contract
 from app.models.user import User
+
 
 logger = logging.getLogger(__name__)
 

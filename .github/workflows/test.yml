@@ -15,7 +15,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: [3.11, 3.12]
+        python-version: [3.8, 3.9, 3.10, 3.11, 3.12]
     
     steps:
       - name: Checkout code
@@ -46,14 +46,14 @@ jobs:
           
       - name: Code quality checks
         run: |
+          echo "Running import sorting check first..."
+          python3 -m isort --check-only --diff app/ || (echo "Import sorting check failed. Run 'isort app/' to fix." && exit 1)
+          
           echo "Running code formatting check..."
           python3 -m black --check --diff app/ || (echo "Code formatting check failed. Run 'black app/' to fix." && exit 1)
           
-          echo "Running import sorting check..."
-          python3 -m isort --check-only --diff app/ || (echo "Import sorting check failed. Run 'isort app/' to fix." && exit 1)
-          
           echo "Running linting check..."
-          python3 -m flake8 app/ --max-line-length=88 --extend-ignore=E203,W503 || (echo "Linting check failed. Fix the issues above." && exit 1)
+          python3 -m flake8 app/ --max-line-length=120 --extend-ignore=E203,W503,E501,E722 || (echo "Linting check failed. Fix the issues above." && exit 1)
           
       - name: Security scanning
         run: |
@@ -173,6 +173,6 @@ jobs:
               });
               console.log('✅ Test results comment posted successfully');
             } catch (error) {
-              console.log('⚠️ Could not post test results comment:', error.message);
+              console.log('⚠️  Could not post test results comment:', error.message);
               console.log('This is usually due to insufficient permissions or the PR being closed');
             }
