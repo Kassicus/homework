@@ -1,0 +1,173 @@
+{% extends "base/layout.html" %}
+
+{% block title %}{{ client.name }} - Contract Management{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12 d-flex justify-content-between align-items-center">
+        <div>
+            <h1 class="h2 mb-0">
+                <i class="bi bi-person me-2"></i>{{ client.name }}
+            </h1>
+            <p class="text-muted">Client Details</p>
+        </div>
+        <div class="btn-group" role="group">
+            <a href="{{ url_for('clients.edit', client_id=client.id) }}" class="btn btn-secondary">
+                <i class="bi bi-pencil me-2"></i>Edit
+            </a>
+            <a href="{{ url_for('clients.index') }}" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left me-2"></i>Back to List
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- Client Information -->
+<div class="row">
+    <div class="col-md-8">
+        <div class="card shadow mb-4">
+            <div class="card-header">
+                <h6 class="m-0 font-weight-bold text-primary">
+                    <i class="bi bi-info-circle me-2"></i>Client Information
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label fw-bold">Name</label>
+                        <p class="form-control-plaintext">{{ client.name }}</p>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label fw-bold">Organization</label>
+                        <p class="form-control-plaintext">{{ client.organization or 'N/A' }}</p>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label fw-bold">Email</label>
+                        <p class="form-control-plaintext">
+                            {% if client.email %}
+                                <a href="mailto:{{ client.email }}">{{ client.email }}</a>
+                            {% else %}
+                                N/A
+                            {% endif %}
+                        </p>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label fw-bold">Phone</label>
+                        <p class="form-control-plaintext">{{ client.phone or 'N/A' }}</p>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-12 mb-3">
+                        <label class="form-label fw-bold">Address</label>
+                        <p class="form-control-plaintext">{{ client.address or 'N/A' }}</p>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label fw-bold">Created</label>
+                        <p class="form-control-plaintext">{{ client.created_at.strftime('%Y-%m-%d %H:%M') if client.created_at else 'N/A' }}</p>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label fw-bold">Last Updated</label>
+                        <p class="form-control-plaintext">{{ client.updated_at.strftime('%Y-%m-%d %H:%M') if client.updated_at else 'N/A' }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card shadow mb-4">
+            <div class="card-header">
+                <h6 class="m-0 font-weight-bold text-primary">
+                    <i class="bi bi-file-earmark-text me-2"></i>Contract Summary
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="text-center mb-3">
+                    <div class="display-4 text-primary">{{ client.contract_count or 0 }}</div>
+                    <div class="text-muted">Total Contracts</div>
+                </div>
+                <div class="d-grid">
+                    <a href="{{ url_for('contracts.new') }}?client_id={{ client.id }}" class="btn btn-primary">
+                        <i class="bi bi-plus-circle me-2"></i>New Contract
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Client Contracts -->
+<div class="row">
+    <div class="col-12">
+        <div class="card shadow">
+            <div class="card-header">
+                <h6 class="m-0 font-weight-bold text-primary">
+                    <i class="bi bi-list me-2"></i>Contracts
+                </h6>
+            </div>
+            <div class="card-body">
+                {% if client.contracts %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Title</th>
+                                    <th>Type</th>
+                                    <th>Status</th>
+                                    <th>Value</th>
+                                    <th>Created</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for contract in client.contracts %}
+                                <tr>
+                                    <td>
+                                        <strong>{{ contract.title }}</strong>
+                                        {% if contract.description %}
+                                            <br><small class="text-muted">{{ contract.description[:50] }}{% if contract.description|length > 50 %}...{% endif %}</small>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ contract.contract_type }}</td>
+                                    <td>
+                                        <span class="badge bg-{{ 'success' if contract.status == 'active' else 'warning' if contract.status == 'draft' else 'secondary' }}">
+                                            {{ contract.status|title }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        {% if contract.contract_value %}
+                                            ${{ "{:,.2f}".format(contract.contract_value) }}
+                                        {% else %}
+                                            N/A
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ contract.created_date.strftime('%Y-%m-%d') if contract.created_date else 'N/A' }}</td>
+                                    <td>
+                                        <a href="{{ url_for('contracts.show', contract_id=contract.id) }}" 
+                                           class="btn btn-sm btn-outline-primary">
+                                            <i class="bi bi-eye"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="text-center py-4">
+                        <i class="bi bi-inbox fa-3x text-muted mb-3"></i>
+                        <p class="text-muted">No contracts found for this client.</p>
+                        <a href="{{ url_for('contracts.new') }}?client_id={{ client.id }}" class="btn btn-primary">
+                            <i class="bi bi-plus-circle me-2"></i>Create First Contract
+                        </a>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

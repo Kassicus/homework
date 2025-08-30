@@ -23,7 +23,7 @@ class Client(db.Model):
     )
 
     # Relationships
-    contracts = db.relationship("Contract", backref="client", lazy="dynamic")
+    contracts = db.relationship("Contract", lazy="dynamic")
 
     def __repr__(self):
         return f"<Client {self.name}>"

@@ -15,6 +15,7 @@ from werkzeug.urls import url_parse
 
 from app.models.user import User
 from app.services.auth_service import AuthService
+from app.forms.auth_forms import LoginForm, RegistrationForm
 
 
 auth_bp = Blueprint("auth", __name__)
@@ -26,23 +27,17 @@ def login():
     if current_user.is_authenticated:
         return redirect(url_for("dashboard.index"))
 
-    if request.method == "POST":
-        username = request.form.get("username")
-        password = request.form.get("password")
-        remember = request.form.get("remember", False)
-
-        if not username or not password:
-            flash("Please enter both username and password.", "error")
-            return render_template("auth/login.html")
-
+    form = LoginForm()
+    
+    if form.validate_on_submit():
         try:
-            user = AuthService.authenticate_user(username, password)
+            user = AuthService.authenticate_user(form.username.data, form.password.data)
 
             if user:
-                login_user(user, remember=remember)
+                login_user(user, remember=form.remember_me.data)
 
                 # Log successful login
-                current_app.logger.info(f"User logged in successfully: {username}")
+                current_app.logger.info(f"User logged in successfully: {form.username.data}")
 
                 # Redirect to next page or dashboard
                 next_page = request.args.get("next")
@@ -55,10 +50,10 @@ def login():
                 flash("Invalid username or password.", "error")
 
         except Exception as e:
-            current_app.logger.error(f"Login error for user {username}: {e}")
+            current_app.logger.error(f"Login error for user {form.username.data}: {e}")
             flash("An error occurred during login. Please try again.", "error")
 
-    return render_template("auth/login.html")
+    return render_template("auth/login.html", form=form)
 
 
 @auth_bp.route("/logout")
@@ -80,50 +75,34 @@ def register():
     if current_user.is_authenticated:
         return redirect(url_for("dashboard.index"))
 
-    if request.method == "POST":
-        username = request.form.get("username")
-        email = request.form.get("email")
-        password = request.form.get("password")
-        confirm_password = request.form.get("confirm_password")
-
-        # Validation
-        if not all([username, email, password, confirm_password]):
-            flash("All fields are required.", "error")
-            return render_template("auth/register.html")
-
-        if password != confirm_password:
-            flash("Passwords do not match.", "error")
-            return render_template("auth/register.html")
-
-        if len(password) < 6:
-            flash("Password must be at least 6 characters long.", "error")
-            return render_template("auth/register.html")
-
+    form = RegistrationForm()
+    
+    if form.validate_on_submit():
         try:
             # Check if username or email already exists
-            if User.query.filter_by(username=username).first():
+            if User.query.filter_by(username=form.username.data).first():
                 flash(
                     "Username already exists. Please choose a different one.", "error"
                 )
-                return render_template("auth/register.html")
+                return render_template("auth/register.html", form=form)
 
-            if User.query.filter_by(email=email).first():
+            if User.query.filter_by(email=form.email.data).first():
                 flash("Email already exists. Please use a different one.", "error")
-                return render_template("auth/register.html")
+                return render_template("auth/register.html", form=form)
 
             # Create new user
-            AuthService.register_user(username, email, password)
+            AuthService.register_user(form.username.data, form.email.data, form.password.data)
 
-            current_app.logger.info(f"New user registered: {username} ({email})")
+            current_app.logger.info(f"New user registered: {form.username.data} ({form.email.data})")
 
             flash("Registration successful! Please log in.", "success")
             return redirect(url_for("auth.login"))
 
         except Exception as e:
-            current_app.logger.error(f"Registration error for user {username}: {e}")
+            current_app.logger.error(f"Registration error for user {form.username.data}: {e}")
             flash("An error occurred during registration. Please try again.", "error")
 
-    return render_template("auth/register.html")
+    return render_template("auth/register.html", form=form)
 
 
 @auth_bp.route("/profile")

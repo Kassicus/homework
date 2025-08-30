@@ -1,0 +1,36 @@
+{% extends "base/layout.html" %}
+
+{% block title %}Activity - Dashboard{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <h1 class="h2 mb-0">
+            <i class="bi bi-clock-history me-2"></i>Activity Timeline
+        </h1>
+        <p class="text-muted">Track all activities and changes in your contract management system</p>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <div class="card shadow">
+            <div class="card-header">
+                <h6 class="m-0 font-weight-bold text-primary">
+                    <i class="bi bi-list me-2"></i>Recent Activity
+                </h6>
+            </div>
+            <div class="card-body">
+                {% if activity_data %}
+                    <p>Activity data available</p>
+                {% else %}
+                    <div class="text-center py-4">
+                        <i class="bi bi-clock-history fa-3x text-muted mb-3"></i>
+                        <p class="text-muted">No activity data available</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

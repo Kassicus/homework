@@ -1,0 +1,36 @@
+{% extends "base/layout.html" %}
+
+{% block title %}Notifications - Dashboard{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <h1 class="h2 mb-0">
+            <i class="bi bi-bell me-2"></i>Notifications
+        </h1>
+        <p class="text-muted">Manage your system notifications and alerts</p>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <div class="card shadow">
+            <div class="card-header">
+                <h6 class="m-0 font-weight-bold text-primary">
+                    <i class="bi bi-list me-2"></i>Notification Center
+                </h6>
+            </div>
+            <div class="card-body">
+                {% if notifications_data %}
+                    <p>Notification data available</p>
+                {% else %}
+                    <div class="text-center py-4">
+                        <i class="bi bi-bell fa-3x text-muted mb-3"></i>
+                        <p class="text-muted">No notifications available</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
