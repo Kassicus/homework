@@ -30,7 +30,7 @@
     ('inactive', 'Inactive')
 ] %}
 {% set show_organization_filter = true %}
-{% set search_results_summary = 'Showing ' + clients.total|string + ' of ' + clients.total|string + ' clients' if clients and clients.items else '' %}
+{% set search_results_summary = 'Showing ' + clients.items|length|string + ' of ' + clients.total|string + ' clients' if clients and clients.items else '' %}
 
 {% include 'components/universal_search.html' %}
 
@@ -186,7 +186,7 @@ function confirmDeleteClient(clientId, clientName) {
         const csrfToken = document.createElement('input');
         csrfToken.type = 'hidden';
         csrfToken.name = 'csrf_token';
-        csrfToken.value = '{{ csrf_token() }}';
+        csrfToken.value = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
         
         form.appendChild(csrfToken);
         document.body.appendChild(form);

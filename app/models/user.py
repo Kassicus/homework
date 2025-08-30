@@ -29,6 +29,7 @@ class User(UserMixin, db.Model):
         "Contract",
         lazy="dynamic",
         foreign_keys="Contract.created_by",
+        back_populates="creator",
     )
     status_changes = db.relationship(
         "ContractStatusHistory", backref="changed_by_user", lazy="dynamic"

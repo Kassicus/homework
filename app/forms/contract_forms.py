@@ -23,7 +23,7 @@ class ContractForm(FlaskForm):
     
     client_id = SelectField('Client', coerce=int, validators=[
         DataRequired(message='Please select a client')
-    ])
+    ], choices=[], default=0)
     
     contract_type = SelectField('Contract Type', choices=[
         ('', 'Select contract type...'),
@@ -39,6 +39,7 @@ class ContractForm(FlaskForm):
     ])
     
     status = SelectField('Status', choices=[
+        ('', 'Select status...'),
         ('draft', 'Draft'),
         ('under_review', 'Under Review'),
         ('active', 'Active'),
@@ -97,7 +98,7 @@ class ContractSearchForm(FlaskForm):
         ('Other', 'Other')
     ])
     
-    client_id = SelectField('Client', coerce=int, choices=[('', 'All Clients')])
+    client_id = SelectField('Client', coerce=int, choices=[(0, 'All Clients')])
     
     date_from = DateField('From Date', validators=[Optional()])
     date_to = DateField('To Date', validators=[Optional()])
@@ -109,6 +110,7 @@ class ContractSearchForm(FlaskForm):
 class ContractStatusForm(FlaskForm):
     """Contract status change form"""
     new_status = SelectField('New Status', choices=[
+        ('', 'Select new status...'),
         ('draft', 'Draft'),
         ('under_review', 'Under Review'),
         ('active', 'Active'),

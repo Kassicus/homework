@@ -69,26 +69,13 @@ class ContractService:
             raise
 
     @staticmethod
-    def get_contract_by_id(contract_id, include_deleted=False):
+    def get_contract_by_id(contract_id, include_deleted=False, user_id=None):
         """Get contract by ID"""
         try:
-            query = Contract.query
-            if not include_deleted:
-                query = query.filter(Contract.deleted_at.is_(None))
-
-            contract = query.get(contract_id)
-
-            if contract:
-                # Log access
-                contract.log_access(
-                    user_id=request.remote_user.id
-                    if hasattr(request, "remote_user")
-                    else None,
-                    access_type="view",
-                    ip_address=request.remote_addr,
-                    user_agent=request.user_agent.string,
-                )
-                db.session.commit()
+            if include_deleted:
+                contract = Contract.query.get(contract_id)
+            else:
+                contract = Contract.query.filter_by(id=contract_id, deleted_at=None).first()
 
             return contract
 
@@ -181,7 +168,7 @@ class ContractService:
             raise
 
     @staticmethod
-    def update_contract(contract_id, update_data, updated_by=None):
+    def update_contract(contract_id, update_data, updated_by=None, file=None):
         """Update contract information"""
         try:
             contract = ContractService.get_contract_by_id(contract_id)
@@ -196,6 +183,31 @@ class ContractService:
                     "created_by",
                 ]:
                     setattr(contract, field, value)
+
+            # Handle file upload if provided
+            if file and file.filename:
+                try:
+                    # Save new file
+                    file_info = FileService.save_uploaded_file(file)
+                    
+                    # Extract text from new document
+                    extracted_text = FileService.extract_text_from_file(
+                        file_info["file_path"], file_info["mime_type"]
+                    )
+                    
+                    # Update file-related fields
+                    contract.file_path = file_info["file_path"]
+                    contract.file_name = file_info["filename"]
+                    contract.file_size = file_info["file_size"]
+                    contract.mime_type = file_info["mime_type"]
+                    contract.extracted_text = extracted_text
+                    
+                    logger.info(f"File updated for contract {contract_id}: {file_info['filename']}")
+                    
+                except Exception as file_error:
+                    logger.error(f"Error updating file for contract {contract_id}: {file_error}")
+                    # Continue with contract update even if file update fails
+                    flash("Contract updated but file upload failed.", "warning")
 
             contract.updated_at = datetime.utcnow()
             db.session.commit()
