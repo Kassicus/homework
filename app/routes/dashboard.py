@@ -4,7 +4,7 @@ Dashboard routes for Contract Management Platform
 from datetime import datetime, timedelta
 import logging
 
-from flask import Blueprint, current_app, jsonify, render_template, request
+from flask import Blueprint, jsonify, render_template, request
 from flask_login import current_user, login_required
 from sqlalchemy import func
 
@@ -227,7 +227,7 @@ def activity():
                 func.max(Contract.created_at).label("last_activity"),
             )
             .outerjoin(Contract, User.id == Contract.created_by)
-            .filter(User.is_active == True)
+            .filter(User.is_active.is_(True))
             .group_by(User.id, User.username)
             .order_by(func.count(Contract.id).desc())
             .all()

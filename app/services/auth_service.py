@@ -1,13 +1,11 @@
 """
 Authentication service for user management
 """
-from datetime import datetime, timedelta
 import logging
 
 import bcrypt
-from flask import current_app, request
+from flask import request
 from flask_login import current_user, login_user, logout_user
-from werkzeug.security import check_password_hash, generate_password_hash
 
 from app import db
 from app.models.user import User

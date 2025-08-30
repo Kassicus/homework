@@ -13,9 +13,9 @@ from flask import (
 from flask_login import current_user, login_required, login_user, logout_user
 from werkzeug.urls import url_parse
 
+from app.forms.auth_forms import LoginForm, RegistrationForm
 from app.models.user import User
 from app.services.auth_service import AuthService
-from app.forms.auth_forms import LoginForm, RegistrationForm
 
 
 auth_bp = Blueprint("auth", __name__)
@@ -28,7 +28,7 @@ def login():
         return redirect(url_for("dashboard.index"))
 
     form = LoginForm()
-    
+
     if form.validate_on_submit():
         try:
             user = AuthService.authenticate_user(form.username.data, form.password.data)
@@ -37,7 +37,9 @@ def login():
                 login_user(user, remember=form.remember_me.data)
 
                 # Log successful login
-                current_app.logger.info(f"User logged in successfully: {form.username.data}")
+                current_app.logger.info(
+                    f"User logged in successfully: {form.username.data}"
+                )
 
                 # Redirect to next page or dashboard
                 next_page = request.args.get("next")
@@ -76,7 +78,7 @@ def register():
         return redirect(url_for("dashboard.index"))
 
     form = RegistrationForm()
-    
+
     if form.validate_on_submit():
         try:
             # Check if username or email already exists
@@ -91,15 +93,21 @@ def register():
                 return render_template("auth/register.html", form=form)
 
             # Create new user
-            AuthService.register_user(form.username.data, form.email.data, form.password.data)
+            AuthService.register_user(
+                form.username.data, form.email.data, form.password.data
+            )
 
-            current_app.logger.info(f"New user registered: {form.username.data} ({form.email.data})")
+            current_app.logger.info(
+                f"New user registered: {form.username.data} ({form.email.data})"
+            )
 
             flash("Registration successful! Please log in.", "success")
             return redirect(url_for("auth.login"))
 
         except Exception as e:
-            current_app.logger.error(f"Registration error for user {form.username.data}: {e}")
+            current_app.logger.error(
+                f"Registration error for user {form.username.data}: {e}"
+            )
             flash("An error occurred during registration. Please try again.", "error")
 
     return render_template("auth/register.html", form=form)
@@ -117,12 +125,14 @@ def profile():
 def change_password():
     """Change password page"""
     from app.forms.auth_forms import ChangePasswordForm
-    
+
     form = ChangePasswordForm()
-    
+
     if form.validate_on_submit():
         try:
-            AuthService.change_password(current_user.id, form.current_password.data, form.new_password.data)
+            AuthService.change_password(
+                current_user.id, form.current_password.data, form.new_password.data
+            )
 
             flash("Password changed successfully!", "success")
             return redirect(url_for("auth.profile"))
@@ -149,18 +159,20 @@ def change_password():
 def reset_password():
     """Password reset page"""
     from app.forms.auth_forms import ResetPasswordForm
-    
+
     if current_user.is_authenticated:
         return redirect(url_for("dashboard.index"))
 
     form = ResetPasswordForm()
-    
+
     if form.validate_on_submit():
         try:
             # Generate temporary password
             AuthService.reset_password(form.email.data)
 
-            current_app.logger.info(f"Password reset requested for email: {form.email.data}")
+            current_app.logger.info(
+                f"Password reset requested for email: {form.email.data}"
+            )
 
             # TODO: Send email with temporary password
             flash(
@@ -177,7 +189,9 @@ def reset_password():
             )
             return redirect(url_for("auth.login"))
         except Exception as e:
-            current_app.logger.error(f"Password reset error for email {form.email.data}: {e}")
+            current_app.logger.error(
+                f"Password reset error for email {form.email.data}: {e}"
+            )
             flash("An error occurred during password reset. Please try again.", "error")
     elif form.errors:
         # Form validation failed

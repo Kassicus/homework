@@ -4,6 +4,7 @@ Client model for storing client information
 from datetime import datetime
 
 from app import db
+from app.models.contract import Contract
 
 
 class Client(db.Model):
@@ -35,8 +36,11 @@ class Client(db.Model):
         except Exception:
             # Fallback to direct database query if relationship fails
             from app.models.contract import Contract
-            contract_count = Contract.query.filter_by(client_id=self.id, deleted_at=None).count()
-            
+
+            contract_count = Contract.query.filter_by(
+                client_id=self.id, deleted_at=None
+            ).count()
+
         return {
             "id": self.id,
             "name": self.name,
@@ -55,7 +59,7 @@ class Client(db.Model):
         if self.organization:
             return f"{self.organization} - {self.name}"
         return self.name
-    
+
     @property
     def contract_count(self):
         """Return the number of active contracts for this client"""
@@ -64,6 +68,7 @@ class Client(db.Model):
         except Exception:
             # Fallback to direct database query if relationship fails
             from app.models.contract import Contract
+
             return Contract.query.filter_by(client_id=self.id, deleted_at=None).count()
 
     def get_active_contracts(self):
@@ -75,9 +80,9 @@ class Client(db.Model):
         from datetime import datetime, timedelta
 
         cutoff_date = datetime.utcnow().date() + timedelta(days=days)
-        # Use the relationship to filter contracts
+        # Get contracts that are active and expiring soon
         return (
             self.contracts.filter_by(status="active")
-            .filter(self.contracts.any(expiration_date <= cutoff_date))
+            .filter(Contract.expiration_date <= cutoff_date)
             .all()
         )

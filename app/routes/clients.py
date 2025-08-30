@@ -27,16 +27,14 @@ clients_bp = Blueprint("clients", __name__)
 def index():
     """Clients list page"""
     try:
-        page = request.args.get('page', 1, type=int)
+        page = request.args.get("page", 1, type=int)
         per_page = 20  # Show 20 clients per page
-        
+
         # Use paginate() instead of all()
         clients = Client.query.order_by(Client.name).paginate(
-            page=page, 
-            per_page=per_page, 
-            error_out=False
+            page=page, per_page=per_page, error_out=False
         )
-        
+
         return render_template("clients/index.html", clients=clients)
 
     except Exception as e:
@@ -44,6 +42,7 @@ def index():
         flash("An error occurred while loading clients.", "error")
         # Return empty pagination object on error
         from flask_sqlalchemy import Pagination
+
         empty_pagination = Pagination(Client.query, 1, 20, 0, [])
         return render_template("clients/index.html", clients=empty_pagination)
 
@@ -54,14 +53,16 @@ def show(client_id):
     """Show client details"""
     try:
         client = Client.query.get_or_404(client_id)
-        
+
         # Get contracts for this client
         from app.models.contract import Contract
-        contracts = Contract.query.filter_by(
-            client_id=client_id, 
-            deleted_at=None
-        ).order_by(Contract.created_at.desc()).all()
-        
+
+        contracts = (
+            Contract.query.filter_by(client_id=client_id, deleted_at=None)
+            .order_by(Contract.created_at.desc())
+            .all()
+        )
+
         return render_template("clients/show.html", client=client, contracts=contracts)
 
     except Exception as e:
@@ -75,9 +76,9 @@ def show(client_id):
 def new():
     """Create new client"""
     from app.forms.client_forms import ClientForm
-    
+
     form = ClientForm()
-    
+
     if form.validate_on_submit():
         try:
             # Create client from form data
@@ -124,7 +125,7 @@ def new():
 def edit(client_id):
     """Edit client"""
     from app.forms.client_forms import ClientForm
-    
+
     try:
         client = Client.query.get_or_404(client_id)
         form = ClientForm(obj=client)

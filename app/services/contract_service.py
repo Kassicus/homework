@@ -4,13 +4,10 @@ Contract service for contract management operations
 from datetime import date, datetime, timedelta
 import logging
 
-from flask import current_app, request
 from sqlalchemy import and_, desc, or_
 
 from app import db
-from app.models.client import Client
-from app.models.contract import Contract, ContractAccessHistory, ContractStatusHistory
-from app.models.user import User
+from app.models.contract import Contract
 from app.services.file_service import FileService
 
 
@@ -75,7 +72,9 @@ class ContractService:
             if include_deleted:
                 contract = Contract.query.get(contract_id)
             else:
-                contract = Contract.query.filter_by(id=contract_id, deleted_at=None).first()
+                contract = Contract.query.filter_by(
+                    id=contract_id, deleted_at=None
+                ).first()
 
             return contract
 
@@ -189,25 +188,29 @@ class ContractService:
                 try:
                     # Save new file
                     file_info = FileService.save_uploaded_file(file)
-                    
+
                     # Extract text from new document
                     extracted_text = FileService.extract_text_from_file(
                         file_info["file_path"], file_info["mime_type"]
                     )
-                    
+
                     # Update file-related fields
                     contract.file_path = file_info["file_path"]
                     contract.file_name = file_info["filename"]
                     contract.file_size = file_info["file_size"]
                     contract.mime_type = file_info["mime_type"]
                     contract.extracted_text = extracted_text
-                    
-                    logger.info(f"File updated for contract {contract_id}: {file_info['filename']}")
-                    
+
+                    logger.info(
+                        f"File updated for contract {contract_id}: {file_info['filename']}"
+                    )
+
                 except Exception as file_error:
-                    logger.error(f"Error updating file for contract {contract_id}: {file_error}")
+                    logger.error(
+                        f"Error updating file for contract {contract_id}: {file_error}"
+                    )
                     # Continue with contract update even if file update fails
-                    flash("Contract updated but file upload failed.", "warning")
+                    logger.warning("Contract updated but file upload failed")
 
             contract.updated_at = datetime.utcnow()
             db.session.commit()
@@ -229,7 +232,7 @@ class ContractService:
                 raise ValueError("Contract not found")
 
             # Update status
-            status_history = contract.update_status(new_status, changed_by.id, reason)
+            contract.update_status(new_status, changed_by.id, reason)
             db.session.commit()
 
             logger.info(f"Contract status updated: {contract.title} - {new_status}")

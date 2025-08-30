@@ -19,7 +19,6 @@ from app import db
 from app.models.client import Client
 from app.models.contract import Contract
 from app.services.contract_service import ContractService
-from app.services.file_service import FileService
 
 
 logger = logging.getLogger(__name__)
@@ -105,7 +104,7 @@ def show(contract_id):
     try:
         # First, try to get the contract directly from the database
         contract = Contract.query.get(contract_id)
-        
+
         if not contract:
             flash("Contract not found.", "error")
             return redirect(url_for("contracts.index"))
@@ -136,6 +135,7 @@ def show(contract_id):
         logger.error(f"Error showing contract {contract_id}: {e}")
         # Log the full traceback for debugging
         import traceback
+
         logger.error(f"Full traceback: {traceback.format_exc()}")
         flash("An error occurred while loading the contract.", "error")
         return redirect(url_for("contracts.index"))
@@ -146,26 +146,28 @@ def show(contract_id):
 def new():
     """Create new contract"""
     from app.forms.contract_forms import ContractForm
-    
+
     # Get clients first
     clients = Client.query.order_by(Client.name).all()
-    
+
     # Create form with client choices
     form = ContractForm()
-    form.client_id.choices = [(0, 'Select a client...')] + [(c.id, c.name) for c in clients]
-    
+    form.client_id.choices = [(0, "Select a client...")] + [
+        (c.id, c.name) for c in clients
+    ]
+
     # Set default values for other select fields
     if not form.contract_type.data:
-        form.contract_type.data = ''
+        form.contract_type.data = ""
     if not form.status.data:
-        form.status.data = ''
-    
+        form.status.data = ""
+
     if form.validate_on_submit():
         # Additional validation for client_id
         if form.client_id.data == 0:
             flash("Please select a client.", "error")
             return render_template("contracts/new.html", form=form, clients=clients)
-            
+
         try:
             # Get form data
             contract_data = {
@@ -209,7 +211,7 @@ def new():
 def edit(contract_id):
     """Edit contract"""
     from app.forms.contract_forms import ContractForm
-    
+
     try:
         contract = ContractService.get_contract_by_id(contract_id)
 
@@ -219,23 +221,27 @@ def edit(contract_id):
 
         # Get clients first
         clients = Client.query.order_by(Client.name).all()
-        
+
         # Create form with client choices
         form = ContractForm(obj=contract)
-        form.client_id.choices = [(0, 'Select a client...')] + [(c.id, c.name) for c in clients]
-        
+        form.client_id.choices = [(0, "Select a client...")] + [
+            (c.id, c.name) for c in clients
+        ]
+
         # Set default values for other select fields if they're None
         if not form.contract_type.data:
-            form.contract_type.data = ''
+            form.contract_type.data = ""
         if not form.status.data:
-            form.status.data = ''
+            form.status.data = ""
 
         if form.validate_on_submit():
             # Additional validation for client_id
             if form.client_id.data == 0:
                 flash("Please select a client.", "error")
-                return render_template("contracts/edit.html", contract=contract, form=form, clients=clients)
-                
+                return render_template(
+                    "contracts/edit.html", contract=contract, form=form, clients=clients
+                )
+
             # Get form data
             update_data = {
                 "title": form.title.data,
@@ -351,39 +357,45 @@ def download(contract_id):
             return redirect(url_for("contracts.show", contract_id=contract_id))
 
         # Security check: Ensure file path is within upload folder
-        from flask import current_app, send_file, abort
         import os
-        
+
+        from flask import abort, current_app, send_file
+
         upload_folder = current_app.config.get("UPLOAD_FOLDER", "uploads")
         file_path = contract.file_path
-        
+
         # Convert relative path to absolute path
         if not os.path.isabs(file_path):
             # If the path starts with 'uploads/', remove it to avoid duplication
-            if file_path.startswith('uploads/'):
+            if file_path.startswith("uploads/"):
                 file_path = file_path[8:]  # Remove 'uploads/' prefix
             file_path = os.path.join(upload_folder, file_path)
-        
+
         # Debug logging
         logger.info(f"Original file_path from DB: {contract.file_path}")
         logger.info(f"Upload folder: {upload_folder}")
         logger.info(f"Resolved file_path: {file_path}")
         logger.info(f"File exists: {os.path.exists(file_path)}")
-        
+
         # Normalize paths to prevent directory traversal attacks
         abs_upload_folder = os.path.abspath(upload_folder)
         abs_file_path = os.path.abspath(file_path)
-        
+
         if not abs_file_path.startswith(abs_upload_folder):
-            logger.error(f"Security violation: Attempted to access file outside upload folder: {file_path}")
+            logger.error(
+                f"Security violation: Attempted to access file outside upload folder: {file_path}"
+            )
             abort(403, description="Access denied")
-        
+
         # Check if file exists
         if not os.path.exists(file_path):
             logger.error(f"File not found on server: {file_path}")
-            flash("File not found on server. The file may have been moved or deleted.", "error")
+            flash(
+                "File not found on server. The file may have been moved or deleted.",
+                "error",
+            )
             return redirect(url_for("contracts.show", contract_id=contract_id))
-        
+
         # Check if file is readable
         if not os.access(file_path, os.R_OK):
             logger.error(f"File not readable: {file_path}")
@@ -406,16 +418,13 @@ def download(contract_id):
 
         # Determine MIME type for proper browser handling
         mime_type = contract.mime_type or "application/octet-stream"
-        
+
         # Set filename for download (use original filename if available)
         filename = contract.file_name or os.path.basename(file_path)
-        
+
         # Send file with proper headers
         return send_file(
-            file_path,
-            as_attachment=True,
-            download_name=filename,
-            mimetype=mime_type
+            file_path, as_attachment=True, download_name=filename, mimetype=mime_type
         )
 
     except Exception as e:

@@ -19,7 +19,10 @@ class Config:
     MAX_CONTENT_LENGTH = int(
         os.environ.get("MAX_UPLOAD_SIZE", 131072000)
     )  # 125MB default
-    UPLOAD_FOLDER = os.environ.get("UPLOAD_FOLDER", os.path.join(os.path.dirname(os.path.dirname(__file__)), "uploads"))
+    UPLOAD_FOLDER = os.environ.get(
+        "UPLOAD_FOLDER",
+        os.path.join(os.path.dirname(os.path.dirname(__file__)), "uploads"),
+    )
     ALLOWED_EXTENSIONS = os.environ.get(
         "ALLOWED_EXTENSIONS", "pdf,docx,doc,txt,rtf"
     ).split(",")

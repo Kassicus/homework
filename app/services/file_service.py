@@ -7,12 +7,8 @@ import os
 
 import PyPDF2
 from docx import Document
-from flask import current_app, request
+from flask import current_app
 from werkzeug.utils import secure_filename
-
-# import textract  # Removed due to deprecation warnings
-from app import db
-from app.models.contract import Contract
 
 
 logger = logging.getLogger(__name__)
@@ -60,11 +56,11 @@ class FileService:
         """Create organized directory structure for uploads"""
         try:
             base_path = current_app.config["UPLOAD_FOLDER"]
-            
+
             # Convert relative path to absolute path if needed
             if not os.path.isabs(base_path):
                 base_path = os.path.abspath(base_path)
-            
+
             current_year = datetime.now().year
             current_month = datetime.now().month
 
