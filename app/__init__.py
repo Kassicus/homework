@@ -51,11 +51,13 @@ def create_app(config_name=None):
     from app.routes.clients import clients_bp
     from app.routes.contracts import contracts_bp
     from app.routes.dashboard import dashboard_bp
+    from app.routes.api import api
 
     app.register_blueprint(auth_bp, url_prefix="/auth")
     app.register_blueprint(contracts_bp, url_prefix="/contracts")
     app.register_blueprint(clients_bp, url_prefix="/clients")
     app.register_blueprint(dashboard_bp, url_prefix="/dashboard")
+    app.register_blueprint(api)
 
     # Register main routes
     from app.routes.main import main_bp
