@@ -1,0 +1,271 @@
+{% extends "base/layout.html" %}
+
+{% block title %}Help & Documentation - Contract Management Platform{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-10">
+            <!-- Header -->
+            <div class="text-center mb-5">
+                <h1 class="display-5 fw-bold text-primary mb-3">
+                    <i class="bi bi-question-circle me-3"></i>Help & Documentation
+                </h1>
+                <p class="lead text-muted">
+                    Documentation and guidance for using the internal contract management platform.
+                </p>
+            </div>
+
+            <!-- Quick Start Guide -->
+            <div class="row mb-5">
+                <div class="col-12">
+                    <h3 class="h4 fw-bold mb-4">Quick Start Guide</h3>
+                    <div class="accordion" id="quickStartAccordion">
+                        <div class="accordion-item">
+                            <h2 class="accordion-header" id="headingOne">
+                                <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseOne" aria-expanded="true" aria-controls="collapseOne">
+                                    <i class="bi bi-1-circle me-2"></i>Access the Platform
+                                </button>
+                            </h2>
+                            <div id="collapseOne" class="accordion-collapse collapse show" aria-labelledby="headingOne" data-bs-parent="#quickStartAccordion">
+                                <div class="accordion-body">
+                                    <p>Use your internal credentials to access the platform. Contact your system administrator if you need access.</p>
+                                    <div class="alert alert-info">
+                                        <i class="bi bi-info-circle me-2"></i>
+                                        <strong>Note:</strong> Access is restricted to authorized internal users only.
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="accordion-item">
+                            <h2 class="accordion-header" id="headingTwo">
+                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseTwo" aria-expanded="false" aria-controls="collapseTwo">
+                                    <i class="bi bi-2-circle me-2"></i>Add Your First Client
+                                </button>
+                            </h2>
+                            <div id="collapseTwo" class="accordion-collapse collapse" aria-labelledby="headingTwo" data-bs-parent="#quickStartAccordion">
+                                <div class="accordion-body">
+                                    <p>Start by adding external companies to the system. Go to the Clients section and click "New Client" to enter their information including name, organization, contact details, and address.</p>
+                                    <div class="alert alert-success">
+                                        <i class="bi bi-check-circle me-2"></i>
+                                        <strong>Tip:</strong> The more complete your client information, the better you can track and manage your relationships.
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="accordion-item">
+                            <h2 class="accordion-header" id="headingThree">
+                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseThree" aria-expanded="false" aria-controls="collapseThree">
+                                    <i class="bi bi-3-circle me-2"></i>Create Your First Contract
+                                </button>
+                            </h2>
+                            <div id="collapseThree" class="accordion-collapse collapse" aria-labelledby="headingThree" data-bs-parent="#quickStartAccordion">
+                                <div class="accordion-body">
+                                    <p>Now you're ready to create contracts! Navigate to the Contracts section and click "New Contract". Fill in the contract details, select the client, and upload any supporting documents.</p>
+                                    <div class="alert alert-warning">
+                                        <i class="bi bi-exclamation-triangle me-2"></i>
+                                        <strong>Important:</strong> Set expiration dates and reminders to never miss a renewal deadline.
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Feature Documentation -->
+            <div class="row mb-5">
+                <div class="col-12">
+                    <h3 class="h4 fw-bold mb-4">Feature Documentation</h3>
+                    <div class="row g-4">
+                        <div class="col-md-6">
+                            <div class="card border-0 shadow-sm h-100">
+                                <div class="card-body">
+                                    <h6 class="card-title fw-bold text-primary">
+                                        <i class="bi bi-search me-2"></i>Advanced Search
+                                    </h6>
+                                    <p class="card-text text-muted">
+                                        Use our powerful search to find contracts by title, client, status, or any text within the document. 
+                                        Combine multiple filters for precise results.
+                                    </p>
+                                    <ul class="list-unstyled small text-muted">
+                                        <li><i class="bi bi-check me-2"></i>Full-text search across all fields</li>
+                                        <li><i class="bi bi-check me-2"></i>Date range filtering</li>
+                                        <li><i class="bi bi-check me-2"></i>Status and type filters</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <div class="card border-0 shadow-sm h-100">
+                                <div class="card-body">
+                                    <h6 class="card-title fw-bold text-primary">
+                                        <i class="bi bi-file-earmark-arrow-up me-2"></i>Document Management
+                                    </h6>
+                                    <p class="card-text text-muted">
+                                        Upload and manage contract documents in multiple formats including PDF, Word, and text files. 
+                                        Our system extracts text for searchability.
+                                    </p>
+                                    <ul class="list-unstyled small text-muted">
+                                        <li><i class="bi bi-check me-2"></i>Multiple file format support</li>
+                                        <li><i class="bi bi-check me-2"></i>Automatic text extraction</li>
+                                        <li><i class="bi bi-check me-2"></i>Secure file storage</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <div class="card border-0 shadow-sm h-100">
+                                <div class="card-body">
+                                    <h6 class="card-title fw-bold text-primary">
+                                        <i class="bi bi-calendar-event me-2"></i>Expiration Tracking
+                                    </h6>
+                                    <p class="card-text text-muted">
+                                        Never miss a contract renewal with our automated expiration tracking. 
+                                        Get notifications and alerts for upcoming deadlines.
+                                    </p>
+                                    <ul class="list-unstyled small text-muted">
+                                        <li><i class="bi bi-check me-2"></i>Automated deadline tracking</li>
+                                        <li><i class="bi bi-check me-2"></i>Customizable reminder settings</li>
+                                        <li><i class="bi bi-check me-2"></i>Renewal workflow management</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        
+                        <div class="col-md-6">
+                            <div class="card border-0 shadow-sm h-100">
+                                <div class="card-body">
+                                    <h6 class="card-title fw-bold text-primary">
+                                        <i class="bi bi-graph-up me-2"></i>Analytics & Reporting
+                                    </h6>
+                                    <p class="card-text text-muted">
+                                        Gain insights into your contract portfolio with comprehensive analytics. 
+                                        Track performance, identify trends, and optimize your processes.
+                                    </p>
+                                    <ul class="list-unstyled small text-muted">
+                                        <li><i class="bi bi-check me-2"></i>Contract performance metrics</li>
+                                        <li><i class="bi bi-check me-2"></i>Financial value tracking</li>
+                                        <li><i class="bi bi-check me-2"></i>Custom report generation</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Common Questions -->
+            <div class="row mb-5">
+                <div class="col-12">
+                    <h3 class="h4 fw-bold mb-4">Frequently Asked Questions</h3>
+                    <div class="accordion" id="faqAccordion">
+                        <div class="accordion-item">
+                            <h2 class="accordion-header" id="faqOne">
+                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faqCollapseOne" aria-expanded="false" aria-controls="faqCollapseOne">
+                                    How secure is my data?
+                                </button>
+                            </h2>
+                            <div id="faqCollapseOne" class="accordion-collapse collapse" aria-labelledby="faqOne" data-bs-parent="#faqAccordion">
+                                <div class="accordion-body">
+                                    <p>Your data security is our top priority. We use internal security measures, secure authentication, and comprehensive access controls. All data is stored securely and backed up regularly.</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="accordion-item">
+                            <h2 class="accordion-header" id="faqTwo">
+                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faqCollapseTwo" aria-expanded="false" aria-controls="faqCollapseTwo">
+                                    Can I export my data?
+                                </button>
+                            </h2>
+                            <div id="faqCollapseTwo" class="accordion-collapse collapse" aria-labelledby="faqTwo" data-bs-parent="#faqAccordion">
+                                <div class="accordion-body">
+                                    <p>Yes! You can export your contract and client data in multiple formats including CSV, Excel, and PDF. This makes it easy to backup your data or use it in other internal systems.</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="accordion-item">
+                            <h2 class="accordion-header" id="faqThree">
+                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faqCollapseThree" aria-expanded="false" aria-controls="faqCollapseThree">
+                                    What file formats are supported?
+                                </button>
+                            </h2>
+                            <div id="faqCollapseThree" class="accordion-collapse collapse" aria-labelledby="faqThree" data-bs-parent="#faqAccordion">
+                                <div class="accordion-body">
+                                    <p>We support a wide range of file formats including PDF, Microsoft Word (.doc, .docx), text files (.txt), and RTF files. Our system automatically extracts text from these documents for searchability.</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="accordion-item">
+                            <h2 class="accordion-header" id="faqFour">
+                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faqCollapseFour" aria-expanded="false" aria-controls="faqCollapseFour">
+                                    How do I set up user permissions?
+                                </button>
+                            </h2>
+                            <div id="faqCollapseFour" class="accordion-collapse collapse" aria-labelledby="faqFour" data-bs-parent="#faqAccordion">
+                                <div class="accordion-body">
+                                    <p>User permissions are managed through role-based access control. Administrators can assign different roles to users, controlling what they can view, edit, or delete within the system.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Internal Support -->
+            <div class="row mb-5">
+                <div class="col-12">
+                    <h3 class="h4 fw-bold mb-4">Need Help?</h3>
+                    <div class="row g-4">
+                        <div class="col-md-4">
+                            <div class="text-center">
+                                <i class="bi bi-book text-primary mb-3" style="font-size: 3rem;"></i>
+                                <h6 class="fw-bold">User Manual</h6>
+                                <p class="text-muted small">
+                                    Comprehensive documentation covering all features and workflows
+                                </p>
+                                <a href="#" class="btn btn-outline-primary btn-sm">Read Manual</a>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-4">
+                            <div class="text-center">
+                                <i class="bi bi-envelope text-primary mb-3" style="font-size: 3rem;"></i>
+                                <h6 class="fw-bold">Internal Support</h6>
+                                <p class="text-muted small">
+                                    Contact your internal IT support team
+                                </p>
+                                <a href="mailto:it-support@company.internal" class="btn btn-outline-primary btn-sm">Contact Support</a>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-4">
+                            <div class="text-center">
+                                <i class="bi bi-person text-primary mb-3" style="font-size: 3rem;"></i>
+                                <h6 class="fw-bold">System Admin</h6>
+                                <p class="text-muted small">
+                                    Contact your system administrator for access issues
+                                </p>
+                                <a href="mailto:admin@company.internal" class="btn btn-outline-primary btn-sm">Contact Admin</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Back to Dashboard -->
+            <div class="text-center">
+                <a href="{{ url_for('dashboard.index') }}" class="btn btn-primary btn-lg">
+                    <i class="bi bi-arrow-left me-2"></i>Back to Dashboard
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

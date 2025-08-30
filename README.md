@@ -1,6 +1,6 @@
-# Contract Management Platform
+# Internal Contract Management Platform
 
-A centralized contract management platform to automate manual workflows, store contract documents, track metadata, and manage the complete contract lifecycle. The platform provides search capabilities, data validation, and a modern web interface.
+A centralized internal tool for managing contracts with external companies. This platform automates manual workflows, stores contract documents, tracks metadata, and manages the complete contract lifecycle. The platform provides search capabilities, data validation, and a modern web interface for internal use only.
 
 ## Features
 
@@ -13,7 +13,7 @@ A centralized contract management platform to automate manual workflows, store c
 - **Audit Trail**: Comprehensive logging of all status changes and document access
 
 ### User Management
-- **Authentication**: Secure user registration and login system
+- **Authentication**: Secure internal user login system
 - **Role-Based Access**: Admin and standard user roles with appropriate permissions
 - **User Profiles**: User management and password change functionality
 
@@ -367,4 +367,4 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ---
 
-**Contract Management Platform** - Streamlining contract workflows since 2025
+**Internal Contract Management Platform** - Streamlining internal contract workflows since 2025

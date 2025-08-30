@@ -41,6 +41,8 @@ class Contract(db.Model):
     )
 
     # Relationships
+    client = db.relationship("Client", lazy="joined")
+    creator = db.relationship("User", lazy="joined")
     status_history = db.relationship(
         "ContractStatusHistory",
         backref="contract",
