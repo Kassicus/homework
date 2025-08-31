@@ -7,12 +7,8 @@ import os
 
 import PyPDF2
 from docx import Document
-from flask import current_app, request
+from flask import current_app
 from werkzeug.utils import secure_filename
-
-# import textract  # Removed due to deprecation warnings
-from app import db
-from app.models.contract import Contract
 
 
 logger = logging.getLogger(__name__)
@@ -60,6 +56,11 @@ class FileService:
         """Create organized directory structure for uploads"""
         try:
             base_path = current_app.config["UPLOAD_FOLDER"]
+
+            # Convert relative path to absolute path if needed
+            if not os.path.isabs(base_path):
+                base_path = os.path.abspath(base_path)
+
             current_year = datetime.now().year
             current_month = datetime.now().month
 
@@ -108,10 +109,12 @@ class FileService:
             mime_type = file.content_type or "application/octet-stream"
 
             logger.info(f"File saved successfully: {filename} ({file_size} bytes)")
+            logger.info(f"File path: {file_path}")
+            logger.info(f"MIME type: {mime_type}")
 
             return {
                 "filename": filename,
-                "file_path": file_path,
+                "file_path": file_path,  # This is now an absolute path
                 "file_size": file_size,
                 "mime_type": mime_type,
             }

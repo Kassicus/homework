@@ -51,11 +51,13 @@ def create_app(config_name=None):
     from app.routes.clients import clients_bp
     from app.routes.contracts import contracts_bp
     from app.routes.dashboard import dashboard_bp
+    from app.routes.api import api
 
     app.register_blueprint(auth_bp, url_prefix="/auth")
     app.register_blueprint(contracts_bp, url_prefix="/contracts")
     app.register_blueprint(clients_bp, url_prefix="/clients")
     app.register_blueprint(dashboard_bp, url_prefix="/dashboard")
+    app.register_blueprint(api)
 
     # Register main routes
     from app.routes.main import main_bp
@@ -65,6 +67,12 @@ def create_app(config_name=None):
     # Create database tables
     with app.app_context():
         db.create_all()
+
+        # Create upload folder if it doesn't exist
+        upload_folder = app.config.get("UPLOAD_FOLDER", "uploads")
+        if not os.path.exists(upload_folder):
+            os.makedirs(upload_folder)
+            app.logger.info(f"Created upload folder: {upload_folder}")
 
         # Create initial admin user if none exists
         try:

@@ -21,7 +21,7 @@ setup(
     version="1.0.0",
     author="Contract Management Team",
     author_email="admin@example.com",
-    description="A centralized contract management platform",
+    description="A centralized internal contract management platform",
     long_description=read_readme(),
     long_description_content_type="text/markdown",
     url="https://github.com/your-org/contract-manager",

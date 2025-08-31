@@ -27,9 +27,9 @@ class User(UserMixin, db.Model):
     # Relationships
     contracts_created = db.relationship(
         "Contract",
-        backref="creator",
         lazy="dynamic",
         foreign_keys="Contract.created_by",
+        back_populates="creator",
     )
     status_changes = db.relationship(
         "ContractStatusHistory", backref="changed_by_user", lazy="dynamic"

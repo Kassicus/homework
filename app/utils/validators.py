@@ -1,10 +1,7 @@
 """
 Validation utility functions for Contract Management Platform
 """
-import os
-
 from flask import current_app
-from werkzeug.utils import secure_filename
 
 
 def validate_file_extension(filename):

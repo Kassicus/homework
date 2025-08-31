@@ -1,0 +1,420 @@
+{% extends "base/layout.html" %}
+
+{% block title %}{{ contract.title }} - Contract Management{% endblock %}
+
+{% block extra_js %}
+<script>
+// PDF Preview functionality
+let pdfDoc = null;
+let pageNum = 1;
+let pageRendering = false;
+let pageNumPending = null;
+let scale = 1.0;
+
+const canvas = document.getElementById('pdfCanvas');
+const ctx = canvas.getContext('2d');
+
+// Load PDF when modal is shown
+document.getElementById('previewModal').addEventListener('show.bs.modal', function () {
+    {% if contract.mime_type and 'pdf' in contract.mime_type %}
+    loadPDF('{{ url_for("contracts.download", contract_id=contract.id) }}');
+    {% endif %}
+});
+
+function loadPDF(url) {
+    // Show loading state
+    document.getElementById('pdfLoading').style.display = 'block';
+    document.getElementById('pdfCanvas').style.display = 'none';
+    
+    // Load the PDF
+    pdfjsLib.getDocument(url).promise.then(function(pdf) {
+        pdfDoc = pdf;
+        document.getElementById('pageInfo').textContent = `Page ${pageNum} of ${pdf.numPages}`;
+        
+        // Initial page render
+        renderPage(pageNum);
+        
+        // Update navigation buttons
+        updateNavigationButtons();
+        
+        // Hide loading state
+        document.getElementById('pdfLoading').style.display = 'none';
+        document.getElementById('pdfCanvas').style.display = 'block';
+    }).catch(function(error) {
+        console.error('Error loading PDF:', error);
+        document.getElementById('pdfLoading').innerHTML = '<p class="text-danger">Error loading PDF preview</p>';
+    });
+}
+
+function renderPage(num) {
+    pageRendering = true;
+    
+    pdfDoc.getPage(num).then(function(page) {
+        const viewport = page.getViewport({scale: scale});
+        canvas.height = viewport.height;
+        canvas.width = viewport.width;
+        
+        const renderContext = {
+            canvasContext: ctx,
+            viewport: viewport
+        };
+        
+        const renderTask = page.render(renderContext);
+        
+        renderTask.promise.then(function() {
+            pageRendering = false;
+            if (pageNumPending !== null) {
+                renderPage(pageNumPending);
+                pageNumPending = null;
+            }
+        });
+    });
+    
+    document.getElementById('pageInfo').textContent = `Page ${num} of ${pdfDoc.numPages}`;
+}
+
+function queueRenderPage(num) {
+    if (pageRendering) {
+        pageNumPending = num;
+    } else {
+        renderPage(num);
+    }
+}
+
+function onPrevPage() {
+    if (pageNum <= 1) {
+        return;
+    }
+    pageNum--;
+    queueRenderPage(pageNum);
+    updateNavigationButtons();
+}
+
+function onNextPage() {
+    if (pageNum >= pdfDoc.numPages) {
+        return;
+    }
+    pageNum++;
+    queueRenderPage(pageNum);
+    updateNavigationButtons();
+}
+
+function updateNavigationButtons() {
+    document.getElementById('prevPage').disabled = pageNum <= 1;
+    document.getElementById('nextPage').disabled = pageNum >= pdfDoc.numPages;
+}
+
+function onZoomIn() {
+    scale *= 1.2;
+    document.getElementById('zoomLevel').textContent = Math.round(scale * 100) + '%';
+    queueRenderPage(pageNum);
+}
+
+function onZoomOut() {
+    scale /= 1.2;
+    document.getElementById('zoomLevel').textContent = Math.round(scale * 100) + '%';
+    queueRenderPage(pageNum);
+}
+
+// Event listeners
+document.getElementById('prevPage').addEventListener('click', onPrevPage);
+document.getElementById('nextPage').addEventListener('click', onNextPage);
+document.getElementById('zoomIn').addEventListener('click', onZoomIn);
+document.getElementById('zoomOut').addEventListener('click', onZoomOut);
+</script>
+{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12 d-flex justify-content-between align-items-center">
+        <div>
+            <h1 class="h2 mb-0">
+                <i class="bi bi-file-earmark-text me-2"></i>{{ contract.title }}
+            </h1>
+            <p class="text-muted">Contract Details</p>
+        </div>
+        <div class="btn-group" role="group">
+            <a href="{{ url_for('contracts.edit', contract_id=contract.id) }}" class="btn btn-secondary">
+                <i class="bi bi-pencil me-2"></i>Edit
+            </a>
+            <a href="{{ url_for('contracts.index') }}" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left me-2"></i>Back to List
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- Contract Information -->
+<div class="row">
+    <div class="col-md-8">
+        <div class="card shadow mb-4">
+            <div class="card-header">
+                <h6 class="m-0 font-weight-bold text-primary">
+                    <i class="bi bi-info-circle me-2"></i>Contract Information
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label fw-bold">Title</label>
+                        <p class="form-control-plaintext">{{ contract.title }}</p>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label fw-bold">Type</label>
+                        <p class="form-control-plaintext">{{ contract.contract_type }}</p>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label fw-bold">Status</label>
+                        <p class="form-control-plaintext">
+                            <span class="badge bg-{{ 'success' if contract.status == 'active' else 'warning' if contract.status == 'draft' else 'secondary' }}">
+                                {{ contract.status|title }}
+                            </span>
+                        </p>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label fw-bold">Value</label>
+                        <p class="form-control-plaintext">
+                            {% if contract.contract_value %}
+                                ${{ "{:,.2f}".format(contract.contract_value) }}
+                            {% else %}
+                                N/A
+                            {% endif %}
+                        </p>
+                    </div>
+                </div>
+                {% if contract.description %}
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Description</label>
+                    <p class="form-control-plaintext">{{ contract.description }}</p>
+                </div>
+                {% endif %}
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label fw-bold">Created Date</label>
+                        <p class="form-control-plaintext">{{ contract.created_date.strftime('%Y-%m-%d') if contract.created_date else 'N/A' }}</p>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label fw-bold">Effective Date</label>
+                        <p class="form-control-plaintext">{{ contract.effective_date.strftime('%Y-%m-%d') if contract.effective_date else 'N/A' }}</p>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label fw-bold">Expiration Date</label>
+                        <p class="form-control-plaintext">
+                            {% if contract.expiration_date %}
+                                {% if contract.is_expired() %}
+                                    <span class="text-danger">{{ contract.expiration_date.strftime('%Y-%m-%d') }}</span>
+                                {% else %}
+                                    {{ contract.expiration_date.strftime('%Y-%m-%d') }}
+                                {% endif %}
+                            {% else %}
+                                N/A
+                            {% endif %}
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card shadow mb-4">
+            <div class="card-header">
+                <h6 class="m-0 font-weight-bold text-primary">
+                    <i class="bi bi-person me-2"></i>Client Information
+                </h6>
+            </div>
+            <div class="card-body">
+                {% if contract.client %}
+                    <h6>{{ contract.client.name }}</h6>
+                    {% if contract.client.organization %}
+                        <p class="text-muted">{{ contract.client.organization }}</p>
+                    {% endif %}
+                    {% if contract.client.email %}
+                        <p><a href="mailto:{{ contract.client.email }}">{{ contract.client.email }}</a></p>
+                    {% endif %}
+                    {% if contract.client.phone %}
+                        <p>{{ contract.client.phone }}</p>
+                    {% endif %}
+                    <a href="{{ url_for('clients.show', client_id=contract.client.id) }}" class="btn btn-outline-primary btn-sm">
+                        <i class="bi bi-eye me-1"></i>View Client
+                    </a>
+                {% else %}
+                    <p class="text-muted">No client assigned</p>
+                {% endif %}
+            </div>
+        </div>
+        
+        {% if contract.file_name %}
+        <div class="card shadow mb-4">
+            <div class="card-header">
+                <h6 class="m-0 font-weight-bold text-primary">
+                    {% if contract.mime_type and 'pdf' in contract.mime_type %}
+                        <i class="bi bi-file-earmark-pdf me-2"></i>
+                    {% elif contract.mime_type and 'word' in contract.mime_type %}
+                        <i class="bi bi-file-earmark-word me-2"></i>
+                    {% elif contract.mime_type and 'text' in contract.mime_type %}
+                        <i class="bi bi-file-earmark-text me-2"></i>
+                    {% else %}
+                        <i class="bi bi-file-earmark me-2"></i>
+                    {% endif %}
+                    Document
+                </h6>
+            </div>
+            <div class="card-body">
+                <p class="mb-2"><strong>{{ contract.file_name }}</strong></p>
+                <p class="text-muted small">
+                    {% if contract.file_size %}
+                        {% if contract.file_size < 1024 %}
+                            {{ contract.file_size }} bytes
+                        {% elif contract.file_size < 1048576 %}
+                            {{ (contract.file_size / 1024) | round(1) }} KB
+                        {% else %}
+                            {{ (contract.file_size / 1048576) | round(1) }} MB
+                        {% endif %}
+                    {% else %}
+                        Size unknown
+                    {% endif %}
+                </p>
+                <p class="text-muted small">{{ contract.mime_type or 'Unknown type' }}</p>
+                <div class="btn-group" role="group">
+                    <a href="{{ url_for('contracts.download', contract_id=contract.id) }}" class="btn btn-outline-primary btn-sm">
+                        <i class="bi bi-download me-1"></i>Download
+                    </a>
+                    {% if contract.extracted_text or contract.mime_type and 'pdf' in contract.mime_type %}
+                        <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#previewModal">
+                            <i class="bi bi-eye me-1"></i>Preview
+                        </button>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Status History -->
+<div class="row">
+    <div class="col-12">
+        <div class="card shadow">
+            <div class="card-header">
+                <h6 class="m-0 font-weight-bold text-primary">
+                    <i class="bi bi-clock-history me-2"></i>Status History
+                </h6>
+            </div>
+            <div class="card-body">
+                {% if contract.status_history %}
+                    <div class="timeline">
+                        {% for history in contract.status_history %}
+                        <div class="timeline-item mb-3">
+                            <div class="timeline-marker bg-primary"></div>
+                            <div class="timeline-content">
+                                <h6 class="timeline-title">{{ history.change_reason or 'Status changed' }}</h6>
+                                <p class="timeline-text text-muted">
+                                    Changed from 
+                                    <span class="badge bg-secondary">{{ history.old_status }}</span> 
+                                    to 
+                                    <span class="badge bg-primary">{{ history.new_status }}</span>
+                                </p>
+                                <small class="text-muted">
+                                    {{ history.changed_at.strftime('%Y-%m-%d %H:%M') if history.changed_at else 'N/A' }}
+                                </small>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="text-center py-4">
+                        <i class="bi bi-clock fa-3x text-muted mb-3"></i>
+                        <p class="text-muted">No status history available.</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Universal Preview Modal -->
+{% if contract.extracted_text or contract.mime_type and 'pdf' in contract.mime_type %}
+<div class="modal fade" id="previewModal" tabindex="-1" aria-labelledby="previewModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="previewModalLabel">
+                    <i class="bi bi-file-earmark-text me-2"></i>Document Preview
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <strong>File:</strong> {{ contract.file_name }}<br>
+                    <strong>Type:</strong> {{ contract.mime_type or 'Unknown' }}<br>
+                    <strong>Size:</strong> 
+                    {% if contract.file_size %}
+                        {% if contract.file_size < 1024 %}
+                            {{ contract.file_size }} bytes
+                        {% elif contract.file_size < 1048576 %}
+                            {{ (contract.file_size / 1024) | round(1) }} KB
+                        {% else %}
+                            {{ (contract.file_size / 1048576) | round(1) }} MB
+                        {% endif %}
+                    {% else %}
+                        Size unknown
+                    {% endif %}
+                </div>
+                <hr>
+                
+                <!-- PDF Preview -->
+                {% if contract.mime_type and 'pdf' in contract.mime_type %}
+                <div id="pdfPreview" class="text-center">
+                    <div class="mb-3">
+                        <div class="btn-group" role="group">
+                            <button type="button" class="btn btn-outline-secondary btn-sm" id="prevPage" disabled>
+                                <i class="bi bi-chevron-left"></i> Previous
+                            </button>
+                            <span class="btn btn-outline-secondary btn-sm" id="pageInfo">Page 1 of 1</span>
+                            <button type="button" class="btn btn-outline-secondary btn-sm" id="nextPage" disabled>
+                                Next <i class="bi bi-chevron-right"></i>
+                            </button>
+                        </div>
+                        <div class="btn-group ms-2" role="group">
+                            <button type="button" class="btn btn-outline-secondary btn-sm" id="zoomOut">
+                                <i class="bi bi-zoom-out"></i>
+                            </button>
+                            <span class="btn btn-outline-secondary btn-sm" id="zoomLevel">100%</span>
+                            <button type="button" class="btn btn-outline-secondary btn-sm" id="zoomIn">
+                                <i class="bi bi-zoom-in"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <canvas id="pdfCanvas" class="border" style="max-width: 100%; height: auto;"></canvas>
+                    <div id="pdfLoading" class="text-center py-4">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading PDF...</span>
+                        </div>
+                        <p class="mt-2">Loading PDF preview...</p>
+                    </div>
+                </div>
+                {% endif %}
+                
+                <!-- Text Preview -->
+                {% if contract.extracted_text %}
+                <div id="textPreview" class="{% if contract.mime_type and 'pdf' in contract.mime_type %}d-none{% endif %}">
+                    <div class="text-preview-content" style="max-height: 400px; overflow-y: auto; font-family: monospace; font-size: 0.9em; white-space: pre-wrap;">
+                        {{ contract.extracted_text[:2000] }}{% if contract.extracted_text|length > 2000 %}...<br><br><em class="text-muted">(Preview truncated. Download full document for complete text.)</em>{% endif %}
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <a href="{{ url_for('contracts.download', contract_id=contract.id) }}" class="btn btn-primary">
+                    <i class="bi bi-download me-1"></i>Download Full Document
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

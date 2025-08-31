@@ -1,8 +1,8 @@
-# Contract Management Platform - Project Plan
+# Internal Contract Management Platform - Project Plan
 
 ## Project Overview
 
-A centralized contract management platform to automate manual workflows, store contract documents, track metadata, and manage the complete contract lifecycle. The platform will provide search capabilities, data validation, and a modern web interface.
+A centralized internal tool for managing contracts with external companies. This platform will automate manual workflows, store contract documents, track metadata, and manage the complete contract lifecycle. The platform will provide search capabilities, data validation, and a modern web interface for internal use only.
 
 ## Technology Stack
 
@@ -28,7 +28,7 @@ A centralized contract management platform to automate manual workflows, store c
 
 ### Authentication Model
 - **Local Authentication**: Username/password with session management
-- **User Registration**: Open registration with admin approval option
+- **User Registration**: Internal user creation by administrators only
 - **User Roles**: Standard users and administrators
 - **Session Management**: Flask-Login with secure session cookies
 

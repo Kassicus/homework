@@ -1,12 +1,11 @@
 """
 Notification service for contract alerts and user notifications
 """
-from datetime import datetime, timedelta
+from datetime import datetime
 import logging
 
 from app import db
 from app.models.contract import Contract
-from app.models.user import User
 
 
 logger = logging.getLogger(__name__)
@@ -216,14 +215,6 @@ class NotificationService:
             notification_count = 0
 
             for user in users:
-                notification = {
-                    "type": notification_type,
-                    "user_id": user.id,
-                    "subject": subject,
-                    "message": message,
-                    "sent_at": datetime.utcnow(),
-                }
-
                 # TODO: Implement email notification system
                 logger.info(f"Custom notification sent to {user.username}: {subject}")
 

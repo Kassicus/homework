@@ -13,6 +13,7 @@ from flask import (
 from flask_login import current_user, login_required, login_user, logout_user
 from werkzeug.urls import url_parse
 
+from app.forms.auth_forms import LoginForm, RegistrationForm
 from app.models.user import User
 from app.services.auth_service import AuthService
 
@@ -26,23 +27,19 @@ def login():
     if current_user.is_authenticated:
         return redirect(url_for("dashboard.index"))
 
-    if request.method == "POST":
-        username = request.form.get("username")
-        password = request.form.get("password")
-        remember = request.form.get("remember", False)
+    form = LoginForm()
 
-        if not username or not password:
-            flash("Please enter both username and password.", "error")
-            return render_template("auth/login.html")
-
+    if form.validate_on_submit():
         try:
-            user = AuthService.authenticate_user(username, password)
+            user = AuthService.authenticate_user(form.username.data, form.password.data)
 
             if user:
-                login_user(user, remember=remember)
+                login_user(user, remember=form.remember_me.data)
 
                 # Log successful login
-                current_app.logger.info(f"User logged in successfully: {username}")
+                current_app.logger.info(
+                    f"User logged in successfully: {form.username.data}"
+                )
 
                 # Redirect to next page or dashboard
                 next_page = request.args.get("next")
@@ -55,10 +52,10 @@ def login():
                 flash("Invalid username or password.", "error")
 
         except Exception as e:
-            current_app.logger.error(f"Login error for user {username}: {e}")
+            current_app.logger.error(f"Login error for user {form.username.data}: {e}")
             flash("An error occurred during login. Please try again.", "error")
 
-    return render_template("auth/login.html")
+    return render_template("auth/login.html", form=form)
 
 
 @auth_bp.route("/logout")
@@ -80,50 +77,40 @@ def register():
     if current_user.is_authenticated:
         return redirect(url_for("dashboard.index"))
 
-    if request.method == "POST":
-        username = request.form.get("username")
-        email = request.form.get("email")
-        password = request.form.get("password")
-        confirm_password = request.form.get("confirm_password")
+    form = RegistrationForm()
 
-        # Validation
-        if not all([username, email, password, confirm_password]):
-            flash("All fields are required.", "error")
-            return render_template("auth/register.html")
-
-        if password != confirm_password:
-            flash("Passwords do not match.", "error")
-            return render_template("auth/register.html")
-
-        if len(password) < 6:
-            flash("Password must be at least 6 characters long.", "error")
-            return render_template("auth/register.html")
-
+    if form.validate_on_submit():
         try:
             # Check if username or email already exists
-            if User.query.filter_by(username=username).first():
+            if User.query.filter_by(username=form.username.data).first():
                 flash(
                     "Username already exists. Please choose a different one.", "error"
                 )
-                return render_template("auth/register.html")
+                return render_template("auth/register.html", form=form)
 
-            if User.query.filter_by(email=email).first():
+            if User.query.filter_by(email=form.email.data).first():
                 flash("Email already exists. Please use a different one.", "error")
-                return render_template("auth/register.html")
+                return render_template("auth/register.html", form=form)
 
             # Create new user
-            AuthService.register_user(username, email, password)
+            AuthService.register_user(
+                form.username.data, form.email.data, form.password.data
+            )
 
-            current_app.logger.info(f"New user registered: {username} ({email})")
+            current_app.logger.info(
+                f"New user registered: {form.username.data} ({form.email.data})"
+            )
 
             flash("Registration successful! Please log in.", "success")
             return redirect(url_for("auth.login"))
 
         except Exception as e:
-            current_app.logger.error(f"Registration error for user {username}: {e}")
+            current_app.logger.error(
+                f"Registration error for user {form.username.data}: {e}"
+            )
             flash("An error occurred during registration. Please try again.", "error")
 
-    return render_template("auth/register.html")
+    return render_template("auth/register.html", form=form)
 
 
 @auth_bp.route("/profile")
@@ -137,25 +124,15 @@ def profile():
 @login_required
 def change_password():
     """Change password page"""
-    if request.method == "POST":
-        current_password = request.form.get("current_password")
-        new_password = request.form.get("new_password")
-        confirm_password = request.form.get("confirm_password")
+    from app.forms.auth_forms import ChangePasswordForm
 
-        if not all([current_password, new_password, confirm_password]):
-            flash("All fields are required.", "error")
-            return render_template("auth/change_password.html")
+    form = ChangePasswordForm()
 
-        if new_password != confirm_password:
-            flash("New passwords do not match.", "error")
-            return render_template("auth/change_password.html")
-
-        if len(new_password) < 6:
-            flash("New password must be at least 6 characters long.", "error")
-            return render_template("auth/change_password.html")
-
+    if form.validate_on_submit():
         try:
-            AuthService.change_password(current_user.id, current_password, new_password)
+            AuthService.change_password(
+                current_user.id, form.current_password.data, form.new_password.data
+            )
 
             flash("Password changed successfully!", "success")
             return redirect(url_for("auth.profile"))
@@ -169,28 +146,33 @@ def change_password():
             flash(
                 "An error occurred while changing password. Please try again.", "error"
             )
+    elif form.errors:
+        # Form validation failed
+        for field, errors in form.errors.items():
+            for error in errors:
+                flash(f"{getattr(form, field).label.text}: {error}", "error")
 
-    return render_template("auth/change_password.html")
+    return render_template("auth/change_password.html", form=form)
 
 
 @auth_bp.route("/reset-password", methods=["GET", "POST"])
 def reset_password():
     """Password reset page"""
+    from app.forms.auth_forms import ResetPasswordForm
+
     if current_user.is_authenticated:
         return redirect(url_for("dashboard.index"))
 
-    if request.method == "POST":
-        email = request.form.get("email")
+    form = ResetPasswordForm()
 
-        if not email:
-            flash("Please enter your email address.", "error")
-            return render_template("auth/reset_password.html")
-
+    if form.validate_on_submit():
         try:
             # Generate temporary password
-            AuthService.reset_password(email)
+            AuthService.reset_password(form.email.data)
 
-            current_app.logger.info(f"Password reset requested for email: {email}")
+            current_app.logger.info(
+                f"Password reset requested for email: {form.email.data}"
+            )
 
             # TODO: Send email with temporary password
             flash(
@@ -207,7 +189,14 @@ def reset_password():
             )
             return redirect(url_for("auth.login"))
         except Exception as e:
-            current_app.logger.error(f"Password reset error for email {email}: {e}")
+            current_app.logger.error(
+                f"Password reset error for email {form.email.data}: {e}"
+            )
             flash("An error occurred during password reset. Please try again.", "error")
+    elif form.errors:
+        # Form validation failed
+        for field, errors in form.errors.items():
+            for error in errors:
+                flash(f"{getattr(form, field).label.text}: {error}", "error")
 
-    return render_template("auth/reset_password.html")
+    return render_template("auth/reset_password.html", form=form)

@@ -1,0 +1,810 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Contract Management Platform - Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #1e293b 0%, #334155 50%, #475569 100%);
+            min-height: 100vh;
+            line-height: 1.6;
+        }
+
+        .container {
+            display: grid;
+            grid-template-columns: 280px 1fr;
+            min-height: 100vh;
+        }
+
+        /* Sidebar - kept as is since you liked it */
+        .sidebar {
+            background: rgba(30, 41, 59, 0.95);
+            backdrop-filter: blur(10px);
+            color: white;
+            padding: 1.5rem;
+            border-right: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .logo {
+            font-size: 1.25rem;
+            font-weight: 700;
+            margin-bottom: 2rem;
+            color: #60a5fa;
+        }
+
+        .nav-menu {
+            list-style: none;
+        }
+
+        .nav-item {
+            margin-bottom: 0.5rem;
+        }
+
+        .nav-link {
+            color: #cbd5e1;
+            text-decoration: none;
+            padding: 0.75rem 1rem;
+            display: block;
+            border-radius: 0.5rem;
+            transition: all 0.3s ease;
+        }
+
+        .nav-link:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            transform: translateX(5px);
+        }
+
+        .nav-link.active {
+            background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+            color: white;
+            box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4);
+        }
+
+        /* Main Content */
+        .main-content {
+            padding: 2rem;
+            overflow-y: auto;
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(20px);
+            padding: 1.5rem 2rem;
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .header h1 {
+            color: white;
+            font-size: 2.5rem;
+            font-weight: 800;
+            text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+            background: linear-gradient(135deg, #ffffff, #e0e7ff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            color: white;
+            font-weight: 500;
+        }
+
+        .user-avatar {
+            width: 50px;
+            height: 50px;
+            background: linear-gradient(135deg, #ff6b6b, #feca57);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 700;
+            box-shadow: 0 8px 25px rgba(255, 107, 107, 0.4);
+            border: 3px solid rgba(255, 255, 255, 0.3);
+        }
+
+        /* Stats Grid with floating cards */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            margin-bottom: 3rem;
+        }
+
+        .stat-card {
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(20px);
+            padding: 2rem;
+            border-radius: 24px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, #ff6b6b, #feca57, #48cae4, #06ffa5);
+            border-radius: 24px 24px 0 0;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-10px) scale(1.02);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .stat-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 1.5rem;
+        }
+
+        .stat-title {
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 0.95rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .stat-icon {
+            width: 60px;
+            height: 60px;
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 1.8rem;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+        }
+
+        .stat-number {
+            font-size: 3.5rem;
+            font-weight: 900;
+            color: white;
+            margin-bottom: 0.5rem;
+            text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+        }
+
+        .stat-change {
+            font-size: 0.9rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .stat-change.positive {
+            color: #06ffa5;
+        }
+
+        .stat-change.negative {
+            color: #ff6b6b;
+        }
+
+        /* Content Grid */
+        .content-grid {
+            display: grid;
+            grid-template-columns: 1fr 400px;
+            gap: 2rem;
+        }
+
+        .main-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 2rem;
+        }
+
+        .side-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 2rem;
+        }
+
+        .card {
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(20px);
+            border-radius: 24px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.2);
+        }
+
+        .card-header {
+            padding: 2rem 2rem 1rem 2rem;
+        }
+
+        .card-title {
+            font-size: 1.4rem;
+            font-weight: 700;
+            color: white;
+            text-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+        }
+
+        .card-content {
+            padding: 0 2rem 2rem 2rem;
+        }
+
+        /* Quick Actions with gradient buttons */
+        .quick-actions {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1.5rem;
+        }
+
+        .action-btn {
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.1));
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            padding: 2rem 1.5rem;
+            border-radius: 20px;
+            text-align: center;
+            text-decoration: none;
+            color: white;
+            font-weight: 600;
+            font-size: 1.1rem;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .action-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: left 0.5s;
+        }
+
+        .action-btn:hover {
+            transform: translateY(-5px) scale(1.05);
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.3), rgba(255, 255, 255, 0.2));
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.2);
+            border-color: rgba(255, 255, 255, 0.5);
+        }
+
+        .action-btn:hover::before {
+            left: 100%;
+        }
+
+        .action-icon {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+            display: block;
+            filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.3));
+        }
+
+        /* Animated Chart */
+        .chart-container {
+            height: 250px;
+            display: flex;
+            align-items: end;
+            gap: 1.5rem;
+            padding: 2rem 0;
+            position: relative;
+        }
+
+        .chart-bar {
+            flex: 1;
+            background: linear-gradient(to top, #667eea, #764ba2, #f093fb);
+            border-radius: 12px 12px 0 0;
+            position: relative;
+            min-height: 30px;
+            display: flex;
+            align-items: end;
+            justify-content: center;
+            color: white;
+            font-size: 1rem;
+            font-weight: 700;
+            text-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+            transition: all 0.4s ease;
+            cursor: pointer;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .chart-bar:hover {
+            transform: scale(1.05) translateY(-5px);
+            filter: brightness(1.2);
+        }
+
+        .chart-bar:nth-child(1) { 
+            height: 80%; 
+            background: linear-gradient(to top, #06ffa5, #00d4aa);
+            animation: growUp 1.5s ease-out 0.2s both;
+        }
+        .chart-bar:nth-child(2) { 
+            height: 60%; 
+            background: linear-gradient(to top, #feca57, #ff9ff3);
+            animation: growUp 1.5s ease-out 0.4s both;
+        }
+        .chart-bar:nth-child(3) { 
+            height: 100%; 
+            background: linear-gradient(to top, #48cae4, #0077b6);
+            animation: growUp 1.5s ease-out 0.6s both;
+        }
+        .chart-bar:nth-child(4) { 
+            height: 45%; 
+            background: linear-gradient(to top, #ff6b6b, #ee5a24);
+            animation: growUp 1.5s ease-out 0.8s both;
+        }
+        .chart-bar:nth-child(5) { 
+            height: 25%; 
+            background: linear-gradient(to top, #a55eea, #26de81);
+            animation: growUp 1.5s ease-out 1s both;
+        }
+
+        @keyframes growUp {
+            from {
+                height: 0;
+                opacity: 0;
+            }
+            to {
+                opacity: 1;
+            }
+        }
+
+        .chart-labels {
+            display: flex;
+            gap: 1.5rem;
+            margin-top: 1rem;
+        }
+
+        .chart-label {
+            flex: 1;
+            text-align: center;
+            font-size: 0.85rem;
+            color: rgba(255, 255, 255, 0.9);
+            font-weight: 600;
+        }
+
+        /* Activity Feed with floating items */
+        .activity-item {
+            display: flex;
+            gap: 1.5rem;
+            padding: 1.5rem;
+            border-radius: 16px;
+            background: rgba(255, 255, 255, 0.1);
+            margin-bottom: 1rem;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .activity-item:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateX(10px);
+        }
+
+        .activity-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .activity-icon {
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            font-size: 1.2rem;
+            color: white;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+        }
+
+        .activity-content {
+            flex: 1;
+        }
+
+        .activity-description {
+            color: white;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+        }
+
+        .activity-time {
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 0.85rem;
+        }
+
+        /* Expiring Contracts with urgency colors */
+        .expiring-contract {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1.5rem;
+            border-radius: 16px;
+            background: rgba(255, 255, 255, 0.1);
+            margin-bottom: 1rem;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .expiring-contract:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: scale(1.02);
+        }
+
+        .expiring-contract:last-child {
+            margin-bottom: 0;
+        }
+
+        .contract-info h4 {
+            color: white;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+
+        .contract-client {
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 0.9rem;
+        }
+
+        .expiration-badge {
+            padding: 0.5rem 1rem;
+            border-radius: 25px;
+            font-size: 0.8rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .expiration-warning {
+            background: linear-gradient(135deg, #feca57, #ff9ff3);
+            color: white;
+            box-shadow: 0 4px 15px rgba(254, 202, 87, 0.4);
+        }
+
+        .expiration-critical {
+            background: linear-gradient(135deg, #ff6b6b, #ee5a24);
+            color: white;
+            box-shadow: 0 4px 15px rgba(255, 107, 107, 0.4);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+
+        /* Personal Activity with progress bars */
+        .activity-stat {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            color: white;
+        }
+
+        .activity-stat:last-child {
+            margin-bottom: 0;
+        }
+
+        .stat-label {
+            font-weight: 500;
+        }
+
+        .stat-value {
+            font-weight: 700;
+            font-size: 1.1rem;
+            padding: 0.25rem 0.75rem;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 20px;
+        }
+
+        @media (max-width: 1024px) {
+            .container {
+                grid-template-columns: 1fr;
+            }
+
+            .sidebar {
+                display: none;
+            }
+
+            .content-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (max-width: 640px) {
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .quick-actions {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Floating particles animation - removed */
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Sidebar Navigation -->
+        <nav class="sidebar">
+            <div class="logo">📄 ContractManager</div>
+            <ul class="nav-menu">
+                <li class="nav-item">
+                    <a href="#" class="nav-link active">📊 Dashboard</a>
+                </li>
+                <li class="nav-item">
+                    <a href="#" class="nav-link">📋 Contracts</a>
+                </li>
+                <li class="nav-item">
+                    <a href="#" class="nav-link">👥 Clients</a>
+                </li>
+                <li class="nav-item">
+                    <a href="#" class="nav-link">📈 Reports</a>
+                </li>
+                <li class="nav-item">
+                    <a href="#" class="nav-link">🔍 Search</a>
+                </li>
+                <li class="nav-item">
+                    <a href="#" class="nav-link">⚙️ Settings</a>
+                </li>
+                <li class="nav-item">
+                    <a href="#" class="nav-link">👤 Users</a>
+                </li>
+            </ul>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Header -->
+            <header class="header">
+                <h1>Dashboard</h1>
+                <div class="user-info">
+                    <span>Welcome back, <strong>John Smith</strong></span>
+                    <div class="user-avatar">JS</div>
+                </div>
+            </header>
+
+            <!-- Statistics Grid -->
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <div class="stat-title">Total Contracts</div>
+                        <div class="stat-icon" style="background: linear-gradient(135deg, #667eea, #764ba2);">📄</div>
+                    </div>
+                    <div class="stat-number">247</div>
+                    <div class="stat-change positive">📈 +12 this month</div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <div class="stat-title">Active Contracts</div>
+                        <div class="stat-icon" style="background: linear-gradient(135deg, #06ffa5, #00d4aa);">✅</div>
+                    </div>
+                    <div class="stat-number">189</div>
+                    <div class="stat-change positive">📈 +8 this month</div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <div class="stat-title">Expiring Soon</div>
+                        <div class="stat-icon" style="background: linear-gradient(135deg, #feca57, #ff9ff3);">⚠️</div>
+                    </div>
+                    <div class="stat-number">15</div>
+                    <div class="stat-change negative">⏰ Next 30 days</div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <div class="stat-title">Contract Value</div>
+                        <div class="stat-icon" style="background: linear-gradient(135deg, #ff6b6b, #feca57);">💰</div>
+                    </div>
+                    <div class="stat-number">$2.4M</div>
+                    <div class="stat-change positive">📈 +$340K this month</div>
+                </div>
+            </div>
+
+            <!-- Content Grid -->
+            <div class="content-grid">
+                <!-- Main Panel -->
+                <div class="main-panel">
+                    <!-- Quick Actions -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h2 class="card-title">⚡ Quick Actions</h2>
+                        </div>
+                        <div class="card-content">
+                            <div class="quick-actions">
+                                <a href="#" class="action-btn">
+                                    <span class="action-icon">📁</span>
+                                    Upload Contract
+                                </a>
+                                <a href="#" class="action-btn">
+                                    <span class="action-icon">👤</span>
+                                    Add Client
+                                </a>
+                                <a href="#" class="action-btn">
+                                    <span class="action-icon">📊</span>
+                                    Generate Report
+                                </a>
+                                <a href="#" class="action-btn">
+                                    <span class="action-icon">🔍</span>
+                                    Advanced Search
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Status Distribution Chart -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h2 class="card-title">📊 Contract Status Distribution</h2>
+                        </div>
+                        <div class="card-content">
+                            <div class="chart-container">
+                                <div class="chart-bar">189</div>
+                                <div class="chart-bar">23</div>
+                                <div class="chart-bar">247</div>
+                                <div class="chart-bar">18</div>
+                                <div class="chart-bar">7</div>
+                            </div>
+                            <div class="chart-labels">
+                                <div class="chart-label">Active</div>
+                                <div class="chart-label">Draft</div>
+                                <div class="chart-label">Total</div>
+                                <div class="chart-label">Review</div>
+                                <div class="chart-label">Expired</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Recent Activity -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h2 class="card-title">🔄 Recent Activity</h2>
+                        </div>
+                        <div class="card-content">
+                            <div class="activity-item">
+                                <div class="activity-icon" style="background: linear-gradient(135deg, #06ffa5, #00d4aa);">📄</div>
+                                <div class="activity-content">
+                                    <div class="activity-description">
+                                        <strong>Service Agreement - Acme Corp</strong> status changed to Active
+                                    </div>
+                                    <div class="activity-time">2 hours ago by John Smith</div>
+                                </div>
+                            </div>
+                            <div class="activity-item">
+                                <div class="activity-icon" style="background: linear-gradient(135deg, #667eea, #764ba2);">📁</div>
+                                <div class="activity-content">
+                                    <div class="activity-description">
+                                        New contract uploaded: <strong>Software License - TechStart Inc</strong>
+                                    </div>
+                                    <div class="activity-time">4 hours ago by Sarah Johnson</div>
+                                </div>
+                            </div>
+                            <div class="activity-item">
+                                <div class="activity-icon" style="background: linear-gradient(135deg, #feca57, #ff9ff3);">⚠️</div>
+                                <div class="activity-content">
+                                    <div class="activity-description">
+                                        <strong>Maintenance Contract - Global Systems</strong> expires in 15 days
+                                    </div>
+                                    <div class="activity-time">1 day ago - System Alert</div>
+                                </div>
+                            </div>
+                            <div class="activity-item">
+                                <div class="activity-icon" style="background: linear-gradient(135deg, #ff6b6b, #feca57);">👤</div>
+                                <div class="activity-content">
+                                    <div class="activity-description">
+                                        New client added: <strong>Innovation Labs LLC</strong>
+                                    </div>
+                                    <div class="activity-time">2 days ago by Mike Chen</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Side Panel -->
+                <div class="side-panel">
+                    <!-- Expiring Contracts -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h2 class="card-title">⏰ Contracts Expiring Soon</h2>
+                        </div>
+                        <div class="card-content">
+                            <div class="expiring-contract">
+                                <div class="contract-info">
+                                    <h4>Service Level Agreement</h4>
+                                    <div class="contract-client">DataFlow Solutions</div>
+                                </div>
+                                <span class="expiration-badge expiration-critical">7 days</span>
+                            </div>
+                            <div class="expiring-contract">
+                                <div class="contract-info">
+                                    <h4>Software Maintenance</h4>
+                                    <div class="contract-client">Global Systems</div>
+                                </div>
+                                <span class="expiration-badge expiration-warning">15 days</span>
+                            </div>
+                            <div class="expiring-contract">
+                                <div class="contract-info">
+                                    <h4>Consulting Agreement</h4>
+                                    <div class="contract-client">Strategic Partners</div>
+                                </div>
+                                <span class="expiration-badge expiration-warning">22 days</span>
+                            </div>
+                            <div class="expiring-contract">
+                                <div class="contract-info">
+                                    <h4>License Agreement</h4>
+                                    <div class="contract-client">TechStart Inc</div>
+                                </div>
+                                <span class="expiration-badge expiration-warning">28 days</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Personal Activity Summary -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h2 class="card-title">🎯 Your Activity This Week</h2>
+                        </div>
+                        <div class="card-content">
+                            <div class="activity-stat">
+                                <span class="stat-label">Contracts Reviewed</span>
+                                <span class="stat-value">12</span>
+                            </div>
+                            <div class="activity-stat">
+                                <span class="stat-label">Documents Uploaded</span>
+                                <span class="stat-value">3</span>
+                            </div>
+                            <div class="activity-stat">
+                                <span class="stat-label">Status Changes</span>
+                                <span class="stat-value">8</span>
+                            </div>
+                            <div class="activity-stat">
+                                <span class="stat-label">Searches Performed</span>
+                                <span class="stat-value">27</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+</body>
+</html>

@@ -1,0 +1,220 @@
+{% extends "base/layout.html" %}
+
+{% block title %}Contracts - Contract Management{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12 d-flex justify-content-between align-items-center">
+        <div>
+            <h1 class="h2 mb-0">
+                <i class="bi bi-file-earmark-text me-2"></i>Contracts
+            </h1>
+            <p class="text-muted">Manage and track all your contracts</p>
+        </div>
+        <a href="{{ url_for('contracts.new') }}" class="btn btn-primary">
+            <i class="bi bi-plus-circle me-2"></i>New Contract
+        </a>
+    </div>
+</div>
+
+<!-- Universal Search Component -->
+{% set search_action = url_for('contracts.search') %}
+{% set search_placeholder = 'Search contracts by title, description, or content...' %}
+{% set search_types = [
+    ('Service', 'Service Agreement'),
+    ('Employment', 'Employment Contract'),
+    ('Lease', 'Lease Agreement'),
+    ('Purchase', 'Purchase Agreement'),
+    ('NDA', 'Non-Disclosure Agreement'),
+    ('Partnership', 'Partnership Agreement'),
+    ('Other', 'Other')
+] %}
+{% set status_options = [
+    ('draft', 'Draft'),
+    ('under_review', 'Under Review'),
+    ('active', 'Active'),
+    ('expired', 'Expired'),
+    ('terminated', 'Terminated'),
+    ('renewed', 'Renewed')
+] %}
+{% set contract_types = [
+    ('Service', 'Service Agreement'),
+    ('Employment', 'Employment Contract'),
+    ('Lease', 'Lease Agreement'),
+    ('Purchase', 'Purchase Agreement'),
+    ('NDA', 'Non-Disclosure Agreement'),
+    ('Partnership', 'Partnership Agreement'),
+    ('Other', 'Other')
+] %}
+{% set show_client_filter = true %}
+{% set show_contract_type_filter = true %}
+{% set clients = clients|default([]) %}
+{% set search_results_summary = 'Showing ' + contracts.total|string + ' of ' + contracts.total|string + ' contracts' if contracts and contracts.items else '' %}
+
+{% include 'components/universal_search.html' %}
+
+<!-- Contracts List -->
+<div class="row">
+    <div class="col-12">
+        <div class="card shadow">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h6 class="m-0 font-weight-bold text-primary">
+                    <i class="bi bi-list me-2"></i>Contracts
+                </h6>
+                <div class="btn-group" role="group">
+                    <button type="button" class="btn btn-outline-secondary btn-sm dropdown-toggle" data-bs-toggle="dropdown">
+                        <i class="bi bi-download me-1"></i>Export
+                    </button>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item" href="#" onclick="exportSearchResults('csv')">CSV</a></li>
+                        <li><a class="dropdown-item" href="#" onclick="exportSearchResults('excel')">Excel</a></li>
+                        <li><a class="dropdown-item" href="#" onclick="exportSearchResults('pdf')">PDF</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="card-body">
+                {% if contracts and contracts.items %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Title</th>
+                                    <th>Client</th>
+                                    <th>Type</th>
+                                    <th>Status</th>
+                                    <th>Value</th>
+                                    <th>Created</th>
+                                    <th>Expires</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for contract in contracts.items %}
+                                <tr>
+                                    <td>
+                                        <strong>{{ contract.title }}</strong>
+                                        {% if contract.description %}
+                                            <br><small class="text-muted">{{ contract.description[:50] }}{% if contract.description|length > 50 %}...{% endif %}</small>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ contract.client.name if contract.client else 'N/A' }}</td>
+                                    <td>{{ contract.contract_type }}</td>
+                                    <td>
+                                        <span class="badge bg-{{ 'success' if contract.status == 'active' else 'warning' if contract.status == 'draft' else 'secondary' }}">
+                                            {{ contract.status|title }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        {% if contract.contract_value %}
+                                            ${{ "{:,.2f}".format(contract.contract_value) }}
+                                        {% else %}
+                                            N/A
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ contract.created_date.strftime('%Y-%m-%d') if contract.created_date else 'N/A' }}</td>
+                                    <td>
+                                        {% if contract.expiration_date %}
+                                            {% if contract.is_expired() %}
+                                                <span class="text-danger">{{ contract.expiration_date.strftime('%Y-%m-%d') }}</span>
+                                            {% else %}
+                                                {{ contract.expiration_date.strftime('%Y-%m-%d') }}
+                                            {% endif %}
+                                        {% else %}
+                                            N/A
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <div class="btn-group" role="group">
+                                            <a href="{{ url_for('contracts.show', contract_id=contract.id) }}" 
+                                               class="btn btn-sm btn-outline-primary" title="View">
+                                                <i class="bi bi-eye"></i>
+                                            </a>
+                                            <a href="{{ url_for('contracts.edit', contract_id=contract.id) }}" 
+                                               class="btn btn-sm btn-outline-secondary" title="Edit">
+                                                <i class="bi bi-pencil"></i>
+                                            </a>
+                                            <button type="button" class="btn btn-sm btn-outline-danger" title="Delete"
+                                                    onclick="confirmDelete({{ contract.id }}, '{{ contract.title }}')">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <!-- Pagination -->
+                    {% if contracts.pages > 1 %}
+                    <nav aria-label="Contracts pagination">
+                        <ul class="pagination justify-content-center">
+                            {% if contracts.has_prev %}
+                                <li class="page-item">
+                                    <a class="page-link" href="{{ url_for('contracts.index', page=contracts.prev_num) }}">Previous</a>
+                                </li>
+                            {% endif %}
+                            
+                            {% for page_num in contracts.iter_pages() %}
+                                {% if page_num %}
+                                    {% if page_num != contracts.page %}
+                                        <li class="page-item">
+                                            <a class="page-link" href="{{ url_for('contracts.index', page=page_num) }}">{{ page_num }}</a>
+                                        </li>
+                                    {% else %}
+                                        <li class="page-item active">
+                                            <span class="page-link">{{ page_num }}</span>
+                                        </li>
+                                    {% endif %}
+                                {% else %}
+                                    <li class="page-item disabled">
+                                        <span class="page-link">...</span>
+                                    </li>
+                                {% endif %}
+                            {% endfor %}
+                            
+                            {% if contracts.has_next %}
+                                <li class="page-item">
+                                    <a class="page-link" href="{{ url_for('contracts.index', page=contracts.next_num) }}">Next</a>
+                                </li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                    {% endif %}
+                    
+                {% else %}
+                    <div class="text-center py-5">
+                        <i class="bi bi-inbox fa-3x text-muted mb-3"></i>
+                        <h4 class="text-muted">No contracts found</h4>
+                        <p class="text-muted">Create your first contract to get started.</p>
+                        <a href="{{ url_for('contracts.new') }}" class="btn btn-primary">
+                            <i class="bi bi-plus-circle me-2"></i>Create Contract
+                        </a>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function confirmDelete(contractId, contractTitle) {
+    if (confirm(`Are you sure you want to delete "${contractTitle}"? This action cannot be undone.`)) {
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = `/contracts/${contractId}/delete`;
+        
+        const csrfToken = document.createElement('input');
+        csrfToken.type = 'hidden';
+        csrfToken.name = 'csrf_token';
+        csrfToken.value = '{{ csrf_token() }}';
+        
+        form.appendChild(csrfToken);
+        document.body.appendChild(form);
+        form.submit();
+    }
+}
+</script>
+{% endblock %}

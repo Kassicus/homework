@@ -27,13 +27,24 @@ clients_bp = Blueprint("clients", __name__)
 def index():
     """Clients list page"""
     try:
-        clients = Client.query.order_by(Client.name).all()
+        page = request.args.get("page", 1, type=int)
+        per_page = 20  # Show 20 clients per page
+
+        # Use paginate() instead of all()
+        clients = Client.query.order_by(Client.name).paginate(
+            page=page, per_page=per_page, error_out=False
+        )
+
         return render_template("clients/index.html", clients=clients)
 
     except Exception as e:
         logger.error(f"Error loading clients: {e}")
         flash("An error occurred while loading clients.", "error")
-        return render_template("clients/index.html", clients=[])
+        # Return empty pagination object on error
+        from flask_sqlalchemy import Pagination
+
+        empty_pagination = Pagination(Client.query, 1, 20, 0, [])
+        return render_template("clients/index.html", clients=empty_pagination)
 
 
 @clients_bp.route("/<int:client_id>")
@@ -42,7 +53,17 @@ def show(client_id):
     """Show client details"""
     try:
         client = Client.query.get_or_404(client_id)
-        return render_template("clients/show.html", client=client)
+
+        # Get contracts for this client
+        from app.models.contract import Contract
+
+        contracts = (
+            Contract.query.filter_by(client_id=client_id, deleted_at=None)
+            .order_by(Contract.created_at.desc())
+            .all()
+        )
+
+        return render_template("clients/show.html", client=client, contracts=contracts)
 
     except Exception as e:
         logger.error(f"Error showing client {client_id}: {e}")
@@ -54,27 +75,26 @@ def show(client_id):
 @login_required
 def new():
     """Create new client"""
-    if request.method == "POST":
-        try:
-            # Get form data
-            client = Client(
-                name=request.form.get("name"),
-                organization=request.form.get("organization"),
-                email=request.form.get("email"),
-                phone=request.form.get("phone"),
-                address=request.form.get("address"),
-            )
+    from app.forms.client_forms import ClientForm
 
-            # Validate required fields
-            if not client.name:
-                flash("Client name is required.", "error")
-                return render_template("clients/new.html")
+    form = ClientForm()
+
+    if form.validate_on_submit():
+        try:
+            # Create client from form data
+            client = Client(
+                name=form.name.data,
+                organization=form.organization.data,
+                email=form.email.data,
+                phone=form.phone.data,
+                address=form.address.data,
+            )
 
             # Check for duplicate names
             existing_client = Client.query.filter_by(name=client.name).first()
             if existing_client:
                 flash("A client with that name already exists.", "error")
-                return render_template("clients/new.html")
+                return render_template("clients/new.html", form=form)
 
             db.session.add(client)
             db.session.commit()
@@ -90,30 +110,33 @@ def new():
             db.session.rollback()
             logger.error(f"Error creating client: {e}")
             flash("An error occurred while creating the client.", "error")
+    elif form.errors:
+        # Form validation failed
+        for field, errors in form.errors.items():
+            for error in errors:
+                flash(f"{getattr(form, field).label.text}: {error}", "error")
 
-    # GET request - show form
-    return render_template("clients/new.html")
+    # GET request or validation failed - show form
+    return render_template("clients/new.html", form=form)
 
 
 @clients_bp.route("/<int:client_id>/edit", methods=["GET", "POST"])
 @login_required
 def edit(client_id):
     """Edit client"""
+    from app.forms.client_forms import ClientForm
+
     try:
         client = Client.query.get_or_404(client_id)
+        form = ClientForm(obj=client)
 
-        if request.method == "POST":
-            # Update client data
-            client.name = request.form.get("name")
-            client.organization = request.form.get("organization")
-            client.email = request.form.get("email")
-            client.phone = request.form.get("phone")
-            client.address = request.form.get("address")
-
-            # Validate required fields
-            if not client.name:
-                flash("Client name is required.", "error")
-                return render_template("clients/edit.html", client=client)
+        if form.validate_on_submit():
+            # Update client data from form
+            client.name = form.name.data
+            client.organization = form.organization.data
+            client.email = form.email.data
+            client.phone = form.phone.data
+            client.address = form.address.data
 
             # Check for duplicate names (excluding current client)
             existing_client = Client.query.filter(
@@ -121,7 +144,7 @@ def edit(client_id):
             ).first()
             if existing_client:
                 flash("A client with that name already exists.", "error")
-                return render_template("clients/edit.html", client=client)
+                return render_template("clients/edit.html", client=client, form=form)
 
             db.session.commit()
 
@@ -131,9 +154,14 @@ def edit(client_id):
 
             flash(f'Client "{client.name}" updated successfully!', "success")
             return redirect(url_for("clients.show", client_id=client.id))
+        elif form.errors:
+            # Form validation failed
+            for field, errors in form.errors.items():
+                for error in errors:
+                    flash(f"{getattr(form, field).label.text}: {error}", "error")
 
-        # GET request - show edit form
-        return render_template("clients/edit.html", client=client)
+        # GET request or validation failed - show edit form
+        return render_template("clients/edit.html", client=client, form=form)
 
     except Exception as e:
         logger.error(f"Error editing client {client_id}: {e}")

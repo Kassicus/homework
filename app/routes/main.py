@@ -2,7 +2,7 @@
 Main routes for Contract Management Platform
 """
 from flask import Blueprint, redirect, render_template, url_for
-from flask_login import current_user, login_required
+from flask_login import current_user
 
 
 main_bp = Blueprint("main", __name__)

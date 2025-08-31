@@ -69,6 +69,7 @@ def validate_file_upload(f):
 
     @wraps(f)
     def decorated_function(*args, **kwargs):
+        from app.utils.helpers import format_file_size
         from app.utils.validators import validate_file_extension, validate_file_size
 
         # Check if file was uploaded

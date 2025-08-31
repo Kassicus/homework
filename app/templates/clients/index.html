@@ -1,0 +1,222 @@
+{% extends "base/layout.html" %}
+
+{% block title %}Clients - Contract Management{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12 d-flex justify-content-between align-items-center">
+        <div>
+            <h1 class="h2 mb-0">
+                <i class="bi bi-people me-2"></i>Clients
+            </h1>
+            <p class="text-muted">Manage your client relationships and information</p>
+        </div>
+        <a href="{{ url_for('clients.new') }}" class="btn btn-primary">
+            <i class="bi bi-person-plus me-2"></i>New Client
+        </a>
+    </div>
+</div>
+
+<!-- Universal Search Component -->
+{% set search_action = url_for('clients.search') %}
+{% set search_placeholder = 'Search clients by name, organization, or contact details...' %}
+{% set search_types = [
+    ('individual', 'Individual'),
+    ('organization', 'Organization'),
+    ('both', 'Both')
+] %}
+{% set status_options = [
+    ('active', 'Active'),
+    ('inactive', 'Inactive')
+] %}
+{% set show_organization_filter = true %}
+{% set search_results_summary = 'Showing ' + clients.items|length|string + ' of ' + clients.total|string + ' clients' if clients and clients.items else '' %}
+
+{% include 'components/universal_search.html' %}
+
+<!-- Clients List -->
+<div class="row">
+    <div class="col-12">
+        <div class="card shadow">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h6 class="m-0 font-weight-bold text-primary">
+                    <i class="bi bi-list me-2"></i>Clients
+                </h6>
+                <div class="btn-group" role="group">
+                    <button type="button" class="btn btn-outline-secondary btn-sm dropdown-toggle" data-bs-toggle="dropdown">
+                        <i class="bi bi-download me-1"></i>Export
+                    </button>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item" href="#" onclick="exportClientResults('csv')">CSV</a></li>
+                        <li><a class="dropdown-item" href="#" onclick="exportClientResults('excel')">Excel</a></li>
+                        <li><a class="dropdown-item" href="#" onclick="exportClientResults('pdf')">PDF</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="card-body">
+                {% if clients and clients.items %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Organization</th>
+                                    <th>Email</th>
+                                    <th>Phone</th>
+                                    <th>Address</th>
+                                    <th>Contracts</th>
+                                    <th>Created</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for client in clients.items %}
+                                <tr>
+                                    <td>
+                                        <strong>{{ client.name }}</strong>
+                                        {% if client.organization %}
+                                            <br><small class="text-muted">{{ client.organization }}</small>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ client.organization or 'N/A' }}</td>
+                                    <td>
+                                        {% if client.email %}
+                                            <a href="mailto:{{ client.email }}">{{ client.email }}</a>
+                                        {% else %}
+                                            N/A
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ client.phone or 'N/A' }}</td>
+                                    <td>
+                                        {% if client.address %}
+                                            <span title="{{ client.address }}">
+                                                {{ client.address[:50] }}{% if client.address|length > 50 %}...{% endif %}
+                                            </span>
+                                        {% else %}
+                                            N/A
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-info">{{ client.contract_count or 0 }}</span>
+                                    </td>
+                                    <td>{{ client.created_at.strftime('%Y-%m-%d') if client.created_at else 'N/A' }}</td>
+                                    <td>
+                                        <div class="btn-group" role="group">
+                                            <a href="{{ url_for('clients.show', client_id=client.id) }}" 
+                                               class="btn btn-sm btn-outline-primary" title="View">
+                                                <i class="bi bi-eye"></i>
+                                            </a>
+                                            <a href="{{ url_for('clients.edit', client_id=client.id) }}" 
+                                               class="btn btn-sm btn-outline-secondary" title="Edit">
+                                                <i class="bi bi-pencil"></i>
+                                            </a>
+                                            <button type="button" class="btn btn-sm btn-outline-danger" title="Delete"
+                                                    onclick="confirmDeleteClient({{ client.id }}, '{{ client.name }}')">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <!-- Pagination -->
+                    {% if clients.pages > 1 %}
+                    <nav aria-label="Clients pagination">
+                        <ul class="pagination justify-content-center">
+                            {% if clients.has_prev %}
+                                <li class="page-item">
+                                    <a class="page-link" href="{{ url_for('clients.index', page=clients.prev_num) }}">Previous</a>
+                                </li>
+                            {% endif %}
+                            
+                            {% for page_num in clients.iter_pages() %}
+                                {% if page_num %}
+                                    {% if page_num != clients.page %}
+                                        <li class="page-item">
+                                            <a class="page-link" href="{{ url_for('clients.index', page=page_num) }}">{{ page_num }}</a>
+                                        </li>
+                                    {% else %}
+                                        <li class="page-item active">
+                                            <span class="page-link">{{ page_num }}</span>
+                                        </li>
+                                    {% endif %}
+                                {% else %}
+                                    <li class="page-item disabled">
+                                        <span class="page-link">...</span>
+                                    </li>
+                                {% endif %}
+                            {% endfor %}
+                            
+                            {% if clients.has_next %}
+                                <li class="page-item">
+                                    <a class="page-link" href="{{ url_for('clients.index', page=clients.next_num) }}">Next</a>
+                                </li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                    {% endif %}
+                    
+                {% else %}
+                    <div class="text-center py-5">
+                        <i class="bi bi-people fa-3x text-muted mb-3"></i>
+                        <h4 class="text-muted">No clients found</h4>
+                        <p class="text-muted">Add your first client to get started.</p>
+                        <a href="{{ url_for('clients.new') }}" class="btn btn-primary">
+                            <i class="bi bi-person-plus me-2"></i>Add Client
+                        </a>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function confirmDeleteClient(clientId, clientName) {
+    if (confirm(`Are you sure you want to delete "${clientName}"? This action cannot be undone.`)) {
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = `/clients/${clientId}/delete`;
+        
+        const csrfToken = document.createElement('input');
+        csrfToken.type = 'hidden';
+        csrfToken.name = 'csrf_token';
+        csrfToken.value = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+        
+        form.appendChild(csrfToken);
+        document.body.appendChild(form);
+        form.submit();
+    }
+}
+
+function exportClientResults(format) {
+    const form = $('#client-search-form');
+    const formData = new FormData(form[0]);
+    formData.append('export_format', format);
+    
+    // Create temporary form for download
+    const tempForm = $('<form>', {
+        method: 'POST',
+        action: '/clients/export',
+        target: '_blank'
+    });
+    
+    for (let [key, value] of formData.entries()) {
+        tempForm.append($('<input>', {
+            type: 'hidden',
+            name: key,
+            value: value
+        }));
+    }
+    
+    $('body').append(tempForm);
+    tempForm.submit();
+    tempForm.remove();
+}
+</script>
+{% endblock %}
