@@ -9,10 +9,10 @@
             <h1 class="h2 mb-0">
                 <i class="bi bi-people me-2"></i>Clients
             </h1>
-            <p class="text-muted">Manage your client relationships and information</p>
+            <p style="color: var(--text-secondary);">Manage your client relationships and information</p>
         </div>
-        <a href="{{ url_for('clients.new') }}" class="btn btn-primary">
-            <i class="bi bi-person-plus me-2"></i>New Client
+        <a href="{{ url_for('clients.new') }}" class="header-action-btn">
+            <i class="bi bi-person-plus"></i>New Client
         </a>
     </div>
 </div>
@@ -43,7 +43,7 @@
                     <i class="bi bi-list me-2"></i>Clients
                 </h6>
                 <div class="btn-group" role="group">
-                    <button type="button" class="btn btn-outline-secondary btn-sm dropdown-toggle" data-bs-toggle="dropdown">
+                    <button type="button" class="export-btn dropdown-toggle" data-bs-toggle="dropdown">
                         <i class="bi bi-download me-1"></i>Export
                     </button>
                     <ul class="dropdown-menu">
@@ -75,7 +75,7 @@
                                     <td>
                                         <strong>{{ client.name }}</strong>
                                         {% if client.organization %}
-                                            <br><small class="text-muted">{{ client.organization }}</small>
+                                            <br><small style="color: var(--text-muted);">{{ client.organization }}</small>
                                         {% endif %}
                                     </td>
                                     <td>{{ client.organization or 'N/A' }}</td>
@@ -101,16 +101,16 @@
                                     </td>
                                     <td>{{ client.created_at.strftime('%Y-%m-%d') if client.created_at else 'N/A' }}</td>
                                     <td>
-                                        <div class="btn-group" role="group">
+                                        <div class="d-flex gap-1">
                                             <a href="{{ url_for('clients.show', client_id=client.id) }}" 
-                                               class="btn btn-sm btn-outline-primary" title="View">
+                                               class="table-action-btn btn-view" title="View">
                                                 <i class="bi bi-eye"></i>
                                             </a>
                                             <a href="{{ url_for('clients.edit', client_id=client.id) }}" 
-                                               class="btn btn-sm btn-outline-secondary" title="Edit">
+                                               class="table-action-btn btn-edit" title="Edit">
                                                 <i class="bi bi-pencil"></i>
                                             </a>
-                                            <button type="button" class="btn btn-sm btn-outline-danger" title="Delete"
+                                            <button type="button" class="table-action-btn btn-delete" title="Delete"
                                                     onclick="confirmDeleteClient({{ client.id }}, '{{ client.name }}')">
                                                 <i class="bi bi-trash"></i>
                                             </button>
@@ -161,11 +161,11 @@
                     
                 {% else %}
                     <div class="text-center py-5">
-                        <i class="bi bi-people fa-3x text-muted mb-3"></i>
-                        <h4 class="text-muted">No clients found</h4>
-                        <p class="text-muted">Add your first client to get started.</p>
-                        <a href="{{ url_for('clients.new') }}" class="btn btn-primary">
-                            <i class="bi bi-person-plus me-2"></i>Add Client
+                        <i class="bi bi-people fa-3x mb-3" style="color: var(--text-muted);"></i>
+                        <h4 style="color: var(--text-secondary);">No clients found</h4>
+                        <p style="color: var(--text-muted);">Add your first client to get started.</p>
+                        <a href="{{ url_for('clients.new') }}" class="empty-state-btn">
+                            <i class="bi bi-person-plus"></i>Add Client
                         </a>
                     </div>
                 {% endif %}

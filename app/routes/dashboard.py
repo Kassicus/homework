@@ -39,11 +39,13 @@ def index():
         # Get expiring contracts
         expiring_contracts = ContractService.get_expiring_contracts(30)
 
-        # Get recent activity (status changes)
+        # Get recent activity (status changes) with relationships
         recent_activity = (
-            ContractStatusHistory.query.order_by(
-                ContractStatusHistory.changed_at.desc()
-            )
+            ContractStatusHistory.query
+            .join(Contract, ContractStatusHistory.contract_id == Contract.id)
+            .join(User, ContractStatusHistory.changed_by == User.id)
+            .filter(Contract.deleted_at.is_(None))
+            .order_by(ContractStatusHistory.changed_at.desc())
             .limit(10)
             .all()
         )
@@ -64,14 +66,62 @@ def index():
         # Get user count
         user_count = User.query.filter_by(is_active=True).count()
 
+        # Calculate monthly changes
+        last_month = datetime.utcnow() - timedelta(days=30)
+        
+        # Contracts created this month
+        contracts_this_month = Contract.query.filter(
+            Contract.created_at >= last_month,
+            Contract.deleted_at.is_(None)
+        ).count()
+        
+        # Clients added this month
+        clients_this_month = Client.query.filter(
+            Client.created_at >= last_month
+        ).count()
+
+        # Get user activity statistics for current user
+        user_stats = {
+            "contracts_reviewed": Contract.query.filter(
+                Contract.created_by == current_user.id,
+                Contract.updated_at >= datetime.utcnow() - timedelta(days=7),
+                Contract.deleted_at.is_(None)
+            ).count(),
+            "documents_uploaded": Contract.query.filter(
+                Contract.created_by == current_user.id,
+                Contract.created_at >= datetime.utcnow() - timedelta(days=7),
+                Contract.deleted_at.is_(None)
+            ).count(),
+            "status_changes": ContractStatusHistory.query.filter(
+                ContractStatusHistory.changed_by == current_user.id,
+                ContractStatusHistory.changed_at >= datetime.utcnow() - timedelta(days=7)
+            ).count(),
+            "searches_performed": 0  # TODO: Implement search tracking
+        }
+
+        # Restructure stats to match template expectations
+        enhanced_stats = {
+            "total_contracts": stats["total_contracts"],
+            "active_contracts": stats["status_counts"].get("active", 0),
+            "draft_contracts": stats["status_counts"].get("draft", 0),
+            "review_contracts": stats["status_counts"].get("under_review", 0),
+            "expired_contracts": stats["status_counts"].get("expired", 0),
+            "expiring_contracts": stats["expiring_soon_count"],
+            "contracts_this_month": contracts_this_month,
+            "clients_this_month": clients_this_month,
+            "total_value": stats["total_value"]
+        }
+
         dashboard_data = {
-            "stats": stats,
+            "stats": enhanced_stats,
             "recent_contracts": recent_contracts,
             "expiring_contracts": expiring_contracts,
             "recent_activity": recent_activity,
             "user_contracts": user_contracts,
             "client_count": client_count,
             "user_count": user_count,
+            "user_stats": user_stats,
+            "today": datetime.utcnow().date(),
         }
 
         return render_template("dashboard/index.html", dashboard_data=dashboard_data)

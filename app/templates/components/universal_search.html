@@ -7,7 +7,7 @@
                     <!-- Main Search Bar -->
                     <div class="col-md-6">
                         <div class="form-group position-relative">
-                            <label for="search_query" class="form-label small text-muted mb-1">
+                            <label for="search_query" class="form-label small mb-1" style="color: var(--text-secondary);">
                                 <i class="bi bi-search me-1"></i>Search
                             </label>
                             <div class="input-group">
@@ -30,7 +30,7 @@
                     <!-- Search Type Dropdown -->
                     <div class="col-md-3">
                         <div class="form-group">
-                            <label for="search_type" class="form-label small text-muted mb-1">Type</label>
+                            <label for="search_type" class="form-label small mb-1" style="color: var(--text-secondary);">Type</label>
                             <select class="form-select" id="search_type" name="type">
                                 <option value="">All Types</option>
                                 {% for type_value, type_label in search_types|default([]) %}
@@ -57,7 +57,8 @@
                     <div class="col-12">
                         <button type="button" class="btn btn-link btn-sm p-0 text-decoration-none" 
                                 data-bs-toggle="collapse" data-bs-target="#advancedSearch{{ search_id|default('') }}" 
-                                aria-expanded="false" aria-controls="advancedSearch{{ search_id|default('') }}">
+                                aria-expanded="false" aria-controls="advancedSearch{{ search_id|default('') }}"
+                                style="color: var(--text-secondary);">
                             <i class="bi bi-funnel me-1"></i>Advanced Search
                             <i class="bi bi-chevron-down ms-1"></i>
                         </button>
@@ -66,18 +67,18 @@
                 
                 <!-- Advanced Search Criteria -->
                 <div class="collapse mt-3" id="advancedSearch{{ search_id|default('') }}">
-                    <div class="card card-body bg-light border-0">
+                    <div class="card card-body border-0" style="background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(10px);">
                         <div class="row g-3">
                             <!-- Date Range -->
                             <div class="col-md-6">
                                 <div class="row g-2">
                                     <div class="col-6">
-                                        <label for="date_from" class="form-label small text-muted mb-1">From Date</label>
+                                        <label for="date_from" class="form-label small mb-1" style="color: var(--text-secondary);">From Date</label>
                                         <input type="date" class="form-control" id="date_from" name="date_from" 
                                                value="{{ request.args.get('date_from', '') }}">
                                     </div>
                                     <div class="col-6">
-                                        <label for="date_to" class="form-label small text-muted mb-1">To Date</label>
+                                        <label for="date_to" class="form-label small mb-1" style="color: var(--text-secondary);">To Date</label>
                                         <input type="date" class="form-control" id="date_to" name="date_to" 
                                                value="{{ request.args.get('date_to', '') }}">
                                     </div>
@@ -86,7 +87,7 @@
                             
                             <!-- Status Filter -->
                             <div class="col-md-3">
-                                <label for="status" class="form-label small text-muted mb-1">Status</label>
+                                <label for="status" class="form-label small mb-1" style="color: var(--text-secondary);">Status</label>
                                 <select class="form-select" id="status" name="status">
                                     <option value="">All Statuses</option>
                                     {% for status_value, status_label in status_options|default([]) %}
@@ -99,7 +100,7 @@
                             
                             <!-- Sort Order -->
                             <div class="col-md-3">
-                                <label for="sort" class="form-label small text-muted mb-1">Sort By</label>
+                                <label for="sort" class="form-label small mb-1" style="color: var(--text-secondary);">Sort By</label>
                                 <select class="form-select" id="sort" name="sort">
                                     <option value="relevance" {{ 'selected' if request.args.get('sort') == 'relevance' }}>Relevance</option>
                                     <option value="date_desc" {{ 'selected' if request.args.get('sort') == 'date_desc' }}>Newest First</option>
@@ -115,7 +116,7 @@
                             <!-- Client Filter (for contracts) -->
                             {% if show_client_filter|default(false) %}
                             <div class="col-md-6">
-                                <label for="client" class="form-label small text-muted mb-1">Client</label>
+                                <label for="client" class="form-label small mb-1" style="color: var(--text-secondary);">Client</label>
                                 <select class="form-select" id="client" name="client">
                                     <option value="">All Clients</option>
                                     {% for client in clients|default([]) %}
@@ -130,7 +131,7 @@
                             <!-- Contract Type Filter (for contracts) -->
                             {% if show_contract_type_filter|default(false) %}
                             <div class="col-md-6">
-                                <label for="contract_type" class="form-label small text-muted mb-1">Contract Type</label>
+                                <label for="contract_type" class="form-label small mb-1" style="color: var(--text-secondary);">Contract Type</label>
                                 <select class="form-select" id="contract_type" name="contract_type">
                                     <option value="">All Types</option>
                                     {% for type_value, type_label in contract_types|default([]) %}
@@ -145,7 +146,7 @@
                             <!-- Organization Filter (for clients) -->
                             {% if show_organization_filter|default(false) %}
                             <div class="col-md-6">
-                                <label for="organization" class="form-label small text-muted mb-1">Organization</label>
+                                <label for="organization" class="form-label small mb-1" style="color: var(--text-secondary);">Organization</label>
                                 <input type="text" class="form-control" id="organization" name="organization" 
                                        value="{{ request.args.get('organization', '') }}" placeholder="Filter by organization">
                             </div>
@@ -179,7 +180,7 @@
 {% if search_results_summary %}
 <div class="search-results-summary mb-3">
     <div class="d-flex justify-content-between align-items-center">
-        <div class="text-muted small">
+        <div class="small" style="color: var(--text-secondary);">
             <i class="bi bi-info-circle me-1"></i>
             {{ search_results_summary }}
         </div>
