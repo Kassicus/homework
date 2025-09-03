@@ -11,12 +11,15 @@
             </h1>
             <p class="text-muted">Client Details</p>
         </div>
-        <div class="btn-group" role="group">
-            <a href="{{ url_for('clients.edit', client_id=client.id) }}" class="btn btn-secondary">
-                <i class="bi bi-pencil me-2"></i>Edit
+        <div class="d-flex gap-2">
+            <a href="{{ url_for('clients.edit', client_id=client.id) }}" class="btn btn-outline-primary">
+                <i class="bi bi-pencil me-1"></i>Edit
             </a>
+            <button type="button" class="btn btn-danger" onclick="confirmDeleteClient({{ client.id }}, '{{ client.name }}')">
+                <i class="bi bi-trash me-1"></i>Delete
+            </button>
             <a href="{{ url_for('clients.index') }}" class="btn btn-outline-secondary">
-                <i class="bi bi-arrow-left me-2"></i>Back to List
+                <i class="bi bi-arrow-left me-1"></i>Back to List
             </a>
         </div>
     </div>
@@ -120,21 +123,22 @@
                                     <th>Status</th>
                                     <th>Value</th>
                                     <th>Created</th>
-                                    <th>Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {% for contract in client.contracts %}
                                 <tr>
                                     <td>
-                                        <strong>{{ contract.title }}</strong>
+                                        <a href="{{ url_for('contracts.show', contract_id=contract.id) }}" class="text-decoration-none">
+                                            <strong class="text-primary">{{ contract.title }}</strong>
+                                        </a>
                                         {% if contract.description %}
                                             <br><small class="text-muted">{{ contract.description[:50] }}{% if contract.description|length > 50 %}...{% endif %}</small>
                                         {% endif %}
                                     </td>
                                     <td>{{ contract.contract_type }}</td>
                                     <td>
-                                        <span class="badge bg-{{ 'success' if contract.status == 'active' else 'warning' if contract.status == 'draft' else 'secondary' }}">
+                                        <span class="badge bg-{{ 'success' if contract.status == 'active' else 'primary' if contract.status in ['draft', 'under_review'] else 'danger' if contract.status in ['expired', 'terminated'] else 'secondary' }}">
                                             {{ contract.status|title }}
                                         </span>
                                     </td>
@@ -146,12 +150,6 @@
                                         {% endif %}
                                     </td>
                                     <td>{{ contract.created_date.strftime('%Y-%m-%d') if contract.created_date else 'N/A' }}</td>
-                                    <td>
-                                        <a href="{{ url_for('contracts.show', contract_id=contract.id) }}" 
-                                           class="btn btn-sm btn-outline-primary">
-                                            <i class="bi bi-eye"></i>
-                                        </a>
-                                    </td>
                                 </tr>
                                 {% endfor %}
                             </tbody>
@@ -170,4 +168,66 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+/* Client detail page styling fixes */
+.card-body {
+    color: var(--text-primary) !important;
+}
+
+.card-body .row .col-md-6 {
+    color: var(--text-primary) !important;
+}
+
+.card-body strong,
+.card-body .fw-bold {
+    color: var(--text-primary) !important;
+}
+
+.card-body p,
+.card-body div {
+    color: var(--text-primary) !important;
+}
+
+/* Ensure proper text color for all content */
+.card .card-body * {
+    color: var(--text-primary) !important;
+}
+
+/* Badge styling */
+.badge {
+    color: white !important;
+}
+
+/* Contract table styling in client view */
+.table td,
+.table th {
+    color: var(--text-primary) !important;
+    border-color: var(--border-color) !important;
+}
+
+/* Contact information styling */
+.contact-info {
+    color: var(--text-primary) !important;
+}
+
+.contact-info a {
+    color: var(--primary) !important;
+}
+
+/* Responsive button layout */
+@media (max-width: 768px) {
+    .d-flex.gap-2 {
+        flex-wrap: wrap;
+        gap: 0.5rem !important;
+    }
+    
+    .d-flex.gap-2 .btn {
+        flex: 1;
+        min-width: calc(33.333% - 0.333rem);
+    }
+}
+</style>
 {% endblock %}

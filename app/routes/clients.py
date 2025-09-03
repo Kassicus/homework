@@ -25,17 +25,56 @@ clients_bp = Blueprint("clients", __name__)
 @clients_bp.route("/")
 @login_required
 def index():
-    """Clients list page"""
+    """Clients list page with search functionality"""
     try:
+        search_term = request.args.get("q", "")
+        search_type = request.args.get("type", "")
+        status_filter = request.args.get("status", "")
+        organization_filter = request.args.get("organization", "")
         page = request.args.get("page", 1, type=int)
         per_page = 20  # Show 20 clients per page
 
-        # Use paginate() instead of all()
-        clients = Client.query.order_by(Client.name).paginate(
+        # Debug logging
+        logger.info(f"Client search params - q: '{search_term}', type: '{search_type}', status: '{status_filter}', organization: '{organization_filter}'")
+        
+        # Build base query
+        query = Client.query
+        
+        # Apply search term filter
+        if search_term:
+            if search_type == "individual":
+                # Search only in name field for individuals
+                query = query.filter(Client.name.ilike(f"%{search_term}%"))
+            elif search_type == "organization":
+                # Search only in organization field
+                query = query.filter(Client.organization.ilike(f"%{search_term}%"))
+            else:
+                # Search in both name, organization, and email (default)
+                query = query.filter(
+                    db.or_(
+                        Client.name.ilike(f"%{search_term}%"),
+                        Client.organization.ilike(f"%{search_term}%"),
+                        Client.email.ilike(f"%{search_term}%")
+                    )
+                )
+        
+        # Apply organization filter
+        if organization_filter:
+            query = query.filter(Client.organization.ilike(f"%{organization_filter}%"))
+        
+        # Execute query with pagination
+        clients = query.order_by(Client.name).paginate(
             page=page, per_page=per_page, error_out=False
         )
 
-        return render_template("clients/index.html", clients=clients)
+        return render_template(
+            "clients/index.html", 
+            clients=clients, 
+            search_term=search_term,
+            search_type=search_type,
+            status_filter=status_filter,
+            organization_filter=organization_filter
+        )
 
     except Exception as e:
         logger.error(f"Error loading clients: {e}")
@@ -202,38 +241,7 @@ def delete(client_id):
         return redirect(url_for("clients.show", client_id=client_id))
 
 
-@clients_bp.route("/search")
-@login_required
-def search():
-    """Search clients"""
-    search_term = request.args.get("q", "")
 
-    try:
-        if search_term:
-            # Search by name or organization
-            clients = (
-                Client.query.filter(
-                    db.or_(
-                        Client.name.ilike(f"%{search_term}%"),
-                        Client.organization.ilike(f"%{search_term}%"),
-                    )
-                )
-                .order_by(Client.name)
-                .all()
-            )
-        else:
-            clients = []
-
-        return render_template(
-            "clients/search.html", clients=clients, search_term=search_term
-        )
-
-    except Exception as e:
-        logger.error(f"Error searching clients: {e}")
-        flash("An error occurred while searching clients.", "error")
-        return render_template(
-            "clients/search.html", clients=[], search_term=search_term
-        )
 
 
 @clients_bp.route("/api/search")
@@ -267,3 +275,4 @@ def api_search():
     except Exception as e:
         logger.error(f"Error in API client search: {e}")
         return {"error": "Search failed"}, 500
+

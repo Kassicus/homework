@@ -1,0 +1,184 @@
+{% extends "base/layout.html" %}
+
+{% block title %}Analytics - Admin Dashboard{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h3 mb-0 text-primary">
+        <i class="bi bi-graph-up me-2"></i>Analytics
+    </h1>
+    <div class="d-flex gap-2">
+        <a href="{{ url_for('admin.dashboard') }}" class="btn btn-outline-primary">
+            <i class="bi bi-arrow-left me-1"></i>Back to Dashboard
+        </a>
+    </div>
+</div>
+
+{% if analytics_data %}
+<!-- Activity by Action Type -->
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="card shadow">
+            <div class="card-header py-3">
+                <h6 class="m-0 fw-bold text-primary">
+                    <i class="bi bi-bar-chart me-2"></i>Activity by Action Type (Last 30 Days)
+                </h6>
+            </div>
+            <div class="card-body">
+                {% if analytics_data.activity_by_action %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Action</th>
+                                    <th class="text-end">Count</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for action, count in analytics_data.activity_by_action %}
+                                <tr>
+                                    <td>
+                                        <span class="badge bg-primary">{{ action.title() }}</span>
+                                    </td>
+                                    <td class="text-end">{{ count }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="text-center py-4">
+                        <i class="bi bi-bar-chart fa-3x text-muted mb-3"></i>
+                        <p class="text-muted">No activity data available.</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Activity by Resource Type -->
+    <div class="col-md-6">
+        <div class="card shadow">
+            <div class="card-header py-3">
+                <h6 class="m-0 fw-bold text-primary">
+                    <i class="bi bi-pie-chart me-2"></i>Activity by Resource Type (Last 30 Days)
+                </h6>
+            </div>
+            <div class="card-body">
+                {% if analytics_data.activity_by_resource %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Resource Type</th>
+                                    <th class="text-end">Count</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for resource_type, count in analytics_data.activity_by_resource %}
+                                <tr>
+                                    <td>
+                                        <span class="badge bg-primary">{{ resource_type.title() }}</span>
+                                    </td>
+                                    <td class="text-end">{{ count }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="text-center py-4">
+                        <i class="bi bi-pie-chart fa-3x text-muted mb-3"></i>
+                        <p class="text-muted">No resource activity data available.</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Daily Activity Chart -->
+<div class="row">
+    <div class="col-12">
+        <div class="card shadow">
+            <div class="card-header py-3">
+                <h6 class="m-0 fw-bold text-primary">
+                    <i class="bi bi-graph-up-arrow me-2"></i>Daily Activity (Last 30 Days)
+                </h6>
+            </div>
+            <div class="card-body">
+                {% if analytics_data.daily_activity %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th class="text-end">Activity Count</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for date, count in analytics_data.daily_activity %}
+                                <tr>
+                                    <td>{{ date if date else 'N/A' }}</td>
+                                    <td class="text-end">
+                                        <span class="badge bg-primary">{{ count }}</span>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="text-center py-4">
+                        <i class="bi bi-graph-up-arrow fa-3x text-muted mb-3"></i>
+                        <p class="text-muted">No daily activity data available.</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+{% else %}
+<!-- No Data State -->
+<div class="row">
+    <div class="col-12">
+        <div class="card shadow">
+            <div class="card-body text-center py-5">
+                <i class="bi bi-graph-up fa-3x text-muted mb-3"></i>
+                <h5 class="text-muted">No Analytics Data Available</h5>
+                <p class="text-muted">Analytics data will appear here once users start interacting with the system.</p>
+                <a href="{{ url_for('admin.dashboard') }}" class="btn btn-primary">
+                    <i class="bi bi-arrow-left me-1"></i>Back to Dashboard
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.stats-card {
+    transition: transform 0.2s ease;
+}
+
+.stats-card .stats-value {
+    font-size: 2rem;
+    font-weight: bold;
+    color: var(--primary);
+}
+
+.stats-card .stats-label {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+}
+
+.chart-container {
+    position: relative;
+    height: 300px;
+}
+</style>
+{% endblock %}

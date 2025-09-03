@@ -18,6 +18,9 @@ $(document).ready(function() {
     // Initialize search functionality
     initializeSearch();
     
+    // Initialize clear buttons
+    initializeClearButtons();
+    
     // Initialize form handling
     initializeForms();
     
@@ -424,4 +427,48 @@ function exportSearchResults(format) {
     $('body').append(tempForm);
     tempForm.submit();
     tempForm.remove();
+}
+
+/**
+ * Initialize clear button functionality
+ */
+function initializeClearButtons() {
+    // Clear search input button
+    $('.btn-clear').on('click', function() {
+        const searchInput = $(this).siblings('input[name="q"]');
+        searchInput.val('');
+        
+        // Submit the form to clear the search
+        $(this).closest('form').submit();
+    });
+}
+
+/**
+ * Clear advanced search filters
+ */
+function clearAdvancedSearch() {
+    // Clear all form inputs in the advanced search section
+    const advancedSearchForm = document.querySelector('.search-form');
+    if (advancedSearchForm) {
+        // Clear all input fields except the main search query
+        const inputs = advancedSearchForm.querySelectorAll('input:not([name="q"]), select');
+        inputs.forEach(input => {
+            if (input.type === 'date' || input.type === 'text') {
+                input.value = '';
+            } else if (input.tagName === 'SELECT') {
+                input.selectedIndex = 0;
+            }
+        });
+        
+        // Submit the form to apply the cleared filters
+        advancedSearchForm.submit();
+    }
+}
+
+/**
+ * Export results function (placeholder)
+ */
+function exportResults() {
+    // This function can be implemented later for exporting filtered results
+    console.log('Export functionality not yet implemented');
 }

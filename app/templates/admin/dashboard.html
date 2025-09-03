@@ -1,0 +1,278 @@
+{% extends "base/layout.html" %}
+
+{% block title %}Admin Dashboard{% endblock %}
+
+{% block extra_css %}
+<style>
+    .stats-card {
+        border-left: 4px solid var(--primary-color);
+    }
+
+    .stats-card .stats-icon {
+        font-size: 2rem;
+        color: var(--text-muted);
+    }
+
+    .stats-card .stats-number {
+        font-size: 2rem;
+        font-weight: bold;
+        color: var(--text-primary);
+    }
+
+    .stats-card .stats-label {
+        color: var(--text-secondary);
+        font-size: 0.9rem;
+    }
+
+    .chart-container {
+        position: relative;
+        height: 300px;
+    }
+
+    /* Admin header responsive design */
+    @media (max-width: 768px) {
+        .d-flex.justify-content-between.align-items-center {
+            flex-direction: column;
+            align-items: flex-start !important;
+            gap: 1rem;
+        }
+        
+        .d-flex.gap-2 {
+            width: 100%;
+            flex-wrap: wrap;
+            gap: 0.5rem !important;
+        }
+        
+        .d-flex.gap-2 .btn {
+            flex: 1;
+            min-width: calc(33.333% - 0.333rem);
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h3 mb-0 text-primary">
+        <i class="bi bi-gear me-2"></i>Admin Dashboard
+    </h1>
+    <div class="d-flex gap-2">
+        <a href="{{ url_for('admin.activity') }}" class="btn btn-outline-primary">
+            <i class="bi bi-activity me-1"></i>Activity Logs
+        </a>
+        <a href="{{ url_for('admin.analytics') }}" class="btn btn-outline-primary">
+            <i class="bi bi-graph-up me-1"></i>Analytics
+        </a>
+        <a href="{{ url_for('admin.users') }}" class="btn btn-outline-primary">
+            <i class="bi bi-people me-1"></i>Users
+        </a>
+    </div>
+</div>
+
+<!-- Statistics Cards -->
+<div class="row mb-4">
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card stats-card shadow">
+            <div class="card-body">
+                <div class="row g-0 align-items-center">
+                    <div class="col me-2">
+                        <div class="stats-label mb-1">Total Users</div>
+                        <div class="stats-number">{{ dashboard_data.total_users or 0 }}</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="bi bi-people stats-icon"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card stats-card shadow">
+            <div class="card-body">
+                <div class="row g-0 align-items-center">
+                    <div class="col me-2">
+                        <div class="stats-label mb-1">Active Contracts</div>
+                        <div class="stats-number">{{ dashboard_data.total_contracts or 0 }}</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="bi bi-file-text stats-icon"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card stats-card shadow">
+            <div class="card-body">
+                <div class="row g-0 align-items-center">
+                    <div class="col me-2">
+                        <div class="stats-label mb-1">Deleted Contracts</div>
+                        <div class="stats-number">{{ dashboard_data.deleted_contracts or 0 }}</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="bi bi-trash stats-icon"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card stats-card shadow">
+            <div class="card-body">
+                <div class="row g-0 align-items-center">
+                    <div class="col me-2">
+                        <div class="stats-label mb-1">Recent Activity</div>
+                        <div class="stats-number">{{ dashboard_data.recent_activity_count or 0 }}</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="bi bi-activity stats-icon"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Content Row -->
+<div class="row">
+    <!-- Most Viewed Contracts -->
+    <div class="col-xl-6 col-lg-6">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3 d-flex align-items-center justify-content-between">
+                <h6 class="m-0 fw-bold text-primary">
+                    <i class="bi bi-eye me-2"></i>Most Viewed Contracts (30 days)
+                </h6>
+            </div>
+            <div class="card-body">
+                {% if dashboard_data.most_viewed_contracts %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Contract</th>
+                                    <th>Views</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for contract in dashboard_data.most_viewed_contracts %}
+                                <tr>
+                                    <td>
+                                        <a href="{{ url_for('contracts.show', contract_id=contract.resource_id) }}" class="text-decoration-none">
+                                            {{ contract.resource_title or 'Unknown Contract' }}
+                                        </a>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-primary">{{ contract.view_count }}</span>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="text-center py-4">
+                        <i class="bi bi-eye fa-3x text-muted mb-3"></i>
+                        <p class="text-muted">No contract views recorded yet.</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Most Active Users -->
+    <div class="col-xl-6 col-lg-6">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 fw-bold text-primary">
+                    <i class="bi bi-person-check me-2"></i>Most Active Users (30 days)
+                </h6>
+            </div>
+            <div class="card-body">
+                {% if dashboard_data.most_active_users %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>User</th>
+                                    <th>Activities</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for user_data in dashboard_data.most_active_users %}
+                                <tr>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <div class="me-2">
+                                                <i class="bi bi-person-circle text-muted"></i>
+                                            </div>
+                                            <div>
+                                                {{ user_data.user.username }}
+                                                {% if user_data.user.is_admin %}
+                                                <span class="badge bg-primary ms-1">Admin</span>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-success">{{ user_data.activity_count }}</span>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="text-center py-4">
+                        <i class="bi bi-person-check fa-3x text-muted mb-3"></i>
+                        <p class="text-muted">No user activity recorded yet.</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Contract Status Distribution -->
+<div class="row">
+    <div class="col-12">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 fw-bold text-primary">
+                    <i class="bi bi-pie-chart me-2"></i>Contract Status Distribution
+                </h6>
+            </div>
+            <div class="card-body">
+                {% if dashboard_data.status_distribution %}
+                    <div class="row">
+                        {% for status, count in dashboard_data.status_distribution %}
+                        <div class="col-md-2 col-sm-4 col-6 mb-3">
+                            <div class="text-center">
+                                <div class="h4 mb-0 text-primary">{{ count }}</div>
+                                <div class="small text-muted">{{ status.title() }}</div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="text-center py-4">
+                        <i class="bi bi-pie-chart fa-3x text-muted mb-3"></i>
+                        <p class="text-muted">No contract data available.</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Auto-refresh dashboard every 5 minutes
+    setTimeout(function() {
+        location.reload();
+    }, 300000);
+</script>
+{% endblock %}

@@ -14,6 +14,7 @@ from app.models.contract import Contract, ContractAccessHistory, ContractStatusH
 from app.models.user import User
 from app.services.contract_service import ContractService
 from app.services.notification_service import NotificationService
+from app.services.activity_service import get_user_activity_summary
 
 
 logger = logging.getLogger(__name__)
@@ -32,21 +33,15 @@ def index():
         recent_contracts = (
             Contract.query.filter(Contract.deleted_at.is_(None))
             .order_by(Contract.created_at.desc())
-            .limit(5)
+            .limit(10)
             .all()
         )
 
         # Get expiring contracts
         expiring_contracts = ContractService.get_expiring_contracts(30)
 
-        # Get recent activity (status changes)
-        recent_activity = (
-            ContractStatusHistory.query.order_by(
-                ContractStatusHistory.changed_at.desc()
-            )
-            .limit(10)
-            .all()
-        )
+        # Get user's recent activity
+        recent_activity = get_user_activity_summary(current_user.id, 10)
 
         # Get user's contracts
         user_contracts = (
@@ -54,7 +49,7 @@ def index():
                 Contract.created_by == current_user.id, Contract.deleted_at.is_(None)
             )
             .order_by(Contract.created_at.desc())
-            .limit(5)
+            .limit(10)
             .all()
         )
 

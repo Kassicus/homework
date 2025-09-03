@@ -18,7 +18,7 @@
 </div>
 
 <!-- Universal Search Component -->
-{% set search_action = url_for('clients.search') %}
+{% set search_action = url_for('clients.index') %}
 {% set search_placeholder = 'Search clients by name, organization, or contact details...' %}
 {% set search_types = [
     ('individual', 'Individual'),
@@ -65,28 +65,30 @@
                                     <th>Phone</th>
                                     <th>Address</th>
                                     <th>Contracts</th>
-                                    <th>Created</th>
-                                    <th>Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {% for client in clients.items %}
                                 <tr>
                                     <td>
-                                        <strong>{{ client.name }}</strong>
-                                        {% if client.organization %}
-                                            <br><small class="text-muted">{{ client.organization }}</small>
-                                        {% endif %}
+                                        <a href="{{ url_for('clients.show', client_id=client.id) }}" class="text-decoration-none">
+                                            <strong style="color: #71A9F7;">{{ client.name }}</strong>
+                                        </a>
                                     </td>
                                     <td>{{ client.organization or 'N/A' }}</td>
+                                    <td>{{ client.email or 'N/A' }}</td>
                                     <td>
-                                        {% if client.email %}
-                                            <a href="mailto:{{ client.email }}">{{ client.email }}</a>
+                                        {% if client.phone %}
+                                            {% set phone = client.phone|replace('-', '')|replace('(', '')|replace(')', '')|replace(' ', '') %}
+                                            {% if phone|length == 10 %}
+                                                {{ phone[:3] }}-{{ phone[3:6] }}-{{ phone[6:] }}
+                                            {% else %}
+                                                {{ client.phone }}
+                                            {% endif %}
                                         {% else %}
                                             N/A
                                         {% endif %}
                                     </td>
-                                    <td>{{ client.phone or 'N/A' }}</td>
                                     <td>
                                         {% if client.address %}
                                             <span title="{{ client.address }}">
@@ -97,25 +99,9 @@
                                         {% endif %}
                                     </td>
                                     <td>
-                                        <span class="badge bg-info">{{ client.contract_count or 0 }}</span>
+                                        <span class="badge bg-primary">{{ client.contract_count or 0 }}</span>
                                     </td>
-                                    <td>{{ client.created_at.strftime('%Y-%m-%d') if client.created_at else 'N/A' }}</td>
-                                    <td>
-                                        <div class="btn-group" role="group">
-                                            <a href="{{ url_for('clients.show', client_id=client.id) }}" 
-                                               class="btn btn-sm btn-outline-primary" title="View">
-                                                <i class="bi bi-eye"></i>
-                                            </a>
-                                            <a href="{{ url_for('clients.edit', client_id=client.id) }}" 
-                                               class="btn btn-sm btn-outline-secondary" title="Edit">
-                                                <i class="bi bi-pencil"></i>
-                                            </a>
-                                            <button type="button" class="btn btn-sm btn-outline-danger" title="Delete"
-                                                    onclick="confirmDeleteClient({{ client.id }}, '{{ client.name }}')">
-                                                <i class="bi bi-trash"></i>
-                                            </button>
-                                        </div>
-                                    </td>
+
                                 </tr>
                                 {% endfor %}
                             </tbody>
@@ -219,4 +205,36 @@ function exportClientResults(format) {
     tempForm.remove();
 }
 </script>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+/* Table row padding for better spacing */
+.table td {
+    padding: 1rem 0.75rem !important;
+    vertical-align: middle !important;
+}
+
+.table th {
+    padding: 1rem 0.75rem !important;
+}
+
+/* Ensure client names are blue */
+.table td a strong {
+    color: #71A9F7 !important;
+}
+
+/* Additional spacing for badge elements */
+.table .badge {
+    padding: 0.5rem 0.75rem;
+}
+
+/* Fix export button positioning */
+.card-header .btn-group {
+    margin-left: auto !important;
+    order: 2;
+    flex-shrink: 0;
+    flex-grow: 0;
+}
+</style>
 {% endblock %}

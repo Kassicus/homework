@@ -9,10 +9,13 @@ let pdfDoc = null;
 let pageNum = 1;
 let pageRendering = false;
 let pageNumPending = null;
-let scale = 1.0;
+let scale = 0.8; // Reduced default scale for dual-page view
+let dualPageMode = true; // Enable dual-page by default
 
-const canvas = document.getElementById('pdfCanvas');
-const ctx = canvas.getContext('2d');
+const canvas1 = document.getElementById('pdfCanvas1');
+const canvas2 = document.getElementById('pdfCanvas2');
+const ctx1 = canvas1 ? canvas1.getContext('2d') : null;
+const ctx2 = canvas2 ? canvas2.getContext('2d') : null;
 
 // Load PDF when modal is shown
 document.getElementById('previewModal').addEventListener('show.bs.modal', function () {
@@ -24,30 +27,56 @@ document.getElementById('previewModal').addEventListener('show.bs.modal', functi
 function loadPDF(url) {
     // Show loading state
     document.getElementById('pdfLoading').style.display = 'block';
-    document.getElementById('pdfCanvas').style.display = 'none';
+    document.getElementById('pdfContainer').style.display = 'none';
     
     // Load the PDF
     pdfjsLib.getDocument(url).promise.then(function(pdf) {
         pdfDoc = pdf;
-        document.getElementById('pageInfo').textContent = `Page ${pageNum} of ${pdf.numPages}`;
+        updatePageInfo();
         
         // Initial page render
-        renderPage(pageNum);
+        renderPages();
         
         // Update navigation buttons
         updateNavigationButtons();
         
         // Hide loading state
         document.getElementById('pdfLoading').style.display = 'none';
-        document.getElementById('pdfCanvas').style.display = 'block';
+        document.getElementById('pdfContainer').style.display = 'block';
     }).catch(function(error) {
         console.error('Error loading PDF:', error);
         document.getElementById('pdfLoading').innerHTML = '<p class="text-danger">Error loading PDF preview</p>';
     });
 }
 
-function renderPage(num) {
+function renderPages() {
+    if (!pdfDoc) return;
+    
     pageRendering = true;
+    
+    // Render left page
+    if (pageNum <= pdfDoc.numPages) {
+        renderSinglePage(pageNum, canvas1, ctx1);
+    } else {
+        // Clear canvas if no page to show
+        if (canvas1) {
+            ctx1.clearRect(0, 0, canvas1.width, canvas1.height);
+        }
+    }
+    
+    // Render right page (next page)
+    if (dualPageMode && pageNum + 1 <= pdfDoc.numPages) {
+        renderSinglePage(pageNum + 1, canvas2, ctx2);
+    } else {
+        // Clear canvas if no page to show or single page mode
+        if (canvas2) {
+            ctx2.clearRect(0, 0, canvas2.width, canvas2.height);
+        }
+    }
+}
+
+function renderSinglePage(num, canvas, ctx) {
+    if (!canvas || !ctx || num > pdfDoc.numPages) return;
     
     pdfDoc.getPage(num).then(function(page) {
         const viewport = page.getViewport({scale: scale});
@@ -64,63 +93,128 @@ function renderPage(num) {
         renderTask.promise.then(function() {
             pageRendering = false;
             if (pageNumPending !== null) {
-                renderPage(pageNumPending);
+                renderPages(pageNumPending);
                 pageNumPending = null;
             }
         });
     });
-    
-    document.getElementById('pageInfo').textContent = `Page ${num} of ${pdfDoc.numPages}`;
 }
 
-function queueRenderPage(num) {
+function updatePageInfo() {
+    if (!pdfDoc) return;
+    
+    let pageText;
+    if (dualPageMode && pageNum + 1 <= pdfDoc.numPages) {
+        pageText = `Pages ${pageNum}-${pageNum + 1} of ${pdfDoc.numPages}`;
+    } else {
+        pageText = `Page ${pageNum} of ${pdfDoc.numPages}`;
+    }
+    
+    document.getElementById('pageInfo').textContent = pageText;
+}
+
+function queueRenderPages(num) {
     if (pageRendering) {
         pageNumPending = num;
     } else {
-        renderPage(num);
+        pageNum = num;
+        renderPages();
+        updatePageInfo();
     }
 }
 
 function onPrevPage() {
-    if (pageNum <= 1) {
-        return;
+    let newPageNum;
+    if (dualPageMode) {
+        newPageNum = Math.max(1, pageNum - 2);
+    } else {
+        newPageNum = Math.max(1, pageNum - 1);
     }
-    pageNum--;
-    queueRenderPage(pageNum);
-    updateNavigationButtons();
+    
+    if (newPageNum !== pageNum) {
+        queueRenderPages(newPageNum);
+        updateNavigationButtons();
+    }
 }
 
 function onNextPage() {
-    if (pageNum >= pdfDoc.numPages) {
-        return;
+    let newPageNum;
+    if (dualPageMode) {
+        newPageNum = Math.min(pdfDoc.numPages, pageNum + 2);
+    } else {
+        newPageNum = Math.min(pdfDoc.numPages, pageNum + 1);
     }
-    pageNum++;
-    queueRenderPage(pageNum);
+    
+    if (newPageNum !== pageNum) {
+        queueRenderPages(newPageNum);
+        updateNavigationButtons();
+    }
+}
+
+function togglePageMode() {
+    dualPageMode = !dualPageMode;
+    
+    // Show/hide second canvas
+    const canvas2Container = document.getElementById('canvas2Container');
+    if (canvas2Container) {
+        canvas2Container.style.display = dualPageMode ? 'block' : 'none';
+    }
+    
+    // Update button text
+    const toggleBtn = document.getElementById('togglePageMode');
+    if (toggleBtn) {
+        toggleBtn.innerHTML = dualPageMode ? 
+            '<i class="bi bi-layout-split"></i> Single Page' : 
+            '<i class="bi bi-columns-gap"></i> Dual Page';
+    }
+    
+    // Re-render pages
+    renderPages();
+    updatePageInfo();
     updateNavigationButtons();
 }
 
 function updateNavigationButtons() {
+    if (!pdfDoc) return;
+    
     document.getElementById('prevPage').disabled = pageNum <= 1;
-    document.getElementById('nextPage').disabled = pageNum >= pdfDoc.numPages;
+    
+    if (dualPageMode) {
+        // In dual page mode, disable next if we're on the last page or second-to-last page
+        document.getElementById('nextPage').disabled = pageNum >= pdfDoc.numPages - 1;
+    } else {
+        document.getElementById('nextPage').disabled = pageNum >= pdfDoc.numPages;
+    }
 }
 
 function onZoomIn() {
-    scale *= 1.2;
-    document.getElementById('zoomLevel').textContent = Math.round(scale * 100) + '%';
-    queueRenderPage(pageNum);
+    scale = Math.min(scale * 1.2, 3.0);
+    updateZoomLevel();
+    renderPages();
 }
 
 function onZoomOut() {
-    scale /= 1.2;
+    scale = Math.max(scale * 0.8, 0.3);
+    updateZoomLevel();
+    renderPages();
+}
+
+function updateZoomLevel() {
     document.getElementById('zoomLevel').textContent = Math.round(scale * 100) + '%';
-    queueRenderPage(pageNum);
 }
 
 // Event listeners
-document.getElementById('prevPage').addEventListener('click', onPrevPage);
-document.getElementById('nextPage').addEventListener('click', onNextPage);
-document.getElementById('zoomIn').addEventListener('click', onZoomIn);
-document.getElementById('zoomOut').addEventListener('click', onZoomOut);
+document.addEventListener('DOMContentLoaded', function() {
+    document.getElementById('prevPage').addEventListener('click', onPrevPage);
+    document.getElementById('nextPage').addEventListener('click', onNextPage);
+    document.getElementById('zoomIn').addEventListener('click', onZoomIn);
+    document.getElementById('zoomOut').addEventListener('click', onZoomOut);
+    
+    const toggleBtn = document.getElementById('togglePageMode');
+    if (toggleBtn) {
+        toggleBtn.addEventListener('click', togglePageMode);
+    }
+});
 </script>
 {% endblock %}
 
@@ -133,12 +227,15 @@ document.getElementById('zoomOut').addEventListener('click', onZoomOut);
             </h1>
             <p class="text-muted">Contract Details</p>
         </div>
-        <div class="btn-group" role="group">
-            <a href="{{ url_for('contracts.edit', contract_id=contract.id) }}" class="btn btn-secondary">
-                <i class="bi bi-pencil me-2"></i>Edit
+        <div class="d-flex gap-2">
+            <a href="{{ url_for('contracts.edit', contract_id=contract.id) }}" class="btn btn-outline-primary">
+                <i class="bi bi-pencil me-1"></i>Edit
             </a>
+            <button type="button" class="btn btn-danger" onclick="confirmDelete({{ contract.id }}, '{{ contract.title }}')">
+                <i class="bi bi-trash me-1"></i>Delete
+            </button>
             <a href="{{ url_for('contracts.index') }}" class="btn btn-outline-secondary">
-                <i class="bi bi-arrow-left me-2"></i>Back to List
+                <i class="bi bi-arrow-left me-1"></i>Back to List
             </a>
         </div>
     </div>
@@ -168,7 +265,7 @@ document.getElementById('zoomOut').addEventListener('click', onZoomOut);
                     <div class="col-md-6 mb-3">
                         <label class="form-label fw-bold">Status</label>
                         <p class="form-control-plaintext">
-                            <span class="badge bg-{{ 'success' if contract.status == 'active' else 'warning' if contract.status == 'draft' else 'secondary' }}">
+                            <span class="badge bg-{{ 'success' if contract.status == 'active' else 'primary' if contract.status in ['draft', 'under_review'] else 'danger' if contract.status in ['expired', 'terminated'] else 'secondary' }}">
                                 {{ contract.status|title }}
                             </span>
                         </p>
@@ -382,13 +479,27 @@ document.getElementById('zoomOut').addEventListener('click', onZoomOut);
                             <button type="button" class="btn btn-outline-secondary btn-sm" id="zoomOut">
                                 <i class="bi bi-zoom-out"></i>
                             </button>
-                            <span class="btn btn-outline-secondary btn-sm" id="zoomLevel">100%</span>
+                            <span class="btn btn-outline-secondary btn-sm" id="zoomLevel">80%</span>
                             <button type="button" class="btn btn-outline-secondary btn-sm" id="zoomIn">
                                 <i class="bi bi-zoom-in"></i>
                             </button>
                         </div>
+                        <div class="btn-group ms-2" role="group">
+                            <button type="button" class="btn btn-outline-secondary btn-sm" id="togglePageMode">
+                                <i class="bi bi-layout-split"></i> Single Page
+                            </button>
+                        </div>
                     </div>
-                    <canvas id="pdfCanvas" class="border" style="max-width: 100%; height: auto;"></canvas>
+                    
+                    <div id="pdfContainer" class="d-flex justify-content-center gap-3">
+                        <div id="canvas1Container" class="flex-shrink-0">
+                            <canvas id="pdfCanvas1" class="border" style="max-height: 70vh; width: auto;"></canvas>
+                        </div>
+                        <div id="canvas2Container" class="flex-shrink-0">
+                            <canvas id="pdfCanvas2" class="border" style="max-height: 70vh; width: auto;"></canvas>
+                        </div>
+                    </div>
+                    
                     <div id="pdfLoading" class="text-center py-4">
                         <div class="spinner-border text-primary" role="status">
                             <span class="visually-hidden">Loading PDF...</span>
@@ -417,4 +528,192 @@ document.getElementById('zoomOut').addEventListener('click', onZoomOut);
     </div>
 </div>
 {% endif %}
+{% endblock %}
+
+{% block extra_css %}
+<style>
+/* Contract detail page styling fixes */
+.card-body {
+    color: var(--text-primary) !important;
+}
+
+.card-body .row .col-md-6 {
+    color: var(--text-primary) !important;
+}
+
+.card-body strong,
+.card-body .fw-bold {
+    color: var(--text-primary) !important;
+}
+
+.card-body p,
+.card-body div {
+    color: var(--text-primary) !important;
+}
+
+/* Ensure proper text color for all content */
+.card .card-body * {
+    color: var(--text-primary) !important;
+}
+
+/* Badge styling */
+.badge {
+    color: white !important;
+}
+
+/* Status history table styling */
+.table td,
+.table th {
+    color: var(--text-primary) !important;
+    border-color: var(--border-color) !important;
+}
+
+/* Client information styling */
+.client-info {
+    color: var(--text-primary) !important;
+}
+
+.client-info a {
+    color: var(--primary) !important;
+}
+
+/* Responsive button layout */
+@media (max-width: 768px) {
+    .d-flex.gap-2 {
+        flex-wrap: wrap;
+        gap: 0.5rem !important;
+    }
+    
+    .d-flex.gap-2 .btn {
+        flex: 1;
+        min-width: calc(33.333% - 0.333rem);
+    }
+}
+
+/* Preview Modal Dark Theme Styling */
+.modal-content {
+    background-color: #2d3748 !important;
+    border: 1px solid #4a5568 !important;
+    color: #e2e8f0 !important;
+    opacity: 1 !important;
+}
+
+.modal-header {
+    background-color: #2d3748 !important;
+    border-bottom: 1px solid #4a5568 !important;
+    color: #e2e8f0 !important;
+}
+
+.modal-header .modal-title {
+    color: #e2e8f0 !important;
+}
+
+.modal-body {
+    background-color: #2d3748 !important;
+    color: #e2e8f0 !important;
+}
+
+.modal-body strong {
+    color: #e2e8f0 !important;
+}
+
+.modal-body hr {
+    border-color: #4a5568 !important;
+    opacity: 0.5;
+}
+
+.modal-footer {
+    background-color: #2d3748 !important;
+    border-top: 1px solid #4a5568 !important;
+}
+
+/* Ensure modal backdrop doesn't interfere */
+.modal-backdrop {
+    background-color: rgba(0, 0, 0, 0.8) !important;
+}
+
+/* PDF Preview Controls Styling */
+#pdfPreview .btn-group .btn {
+    background-color: #2d3748 !important;
+    border-color: #4a5568 !important;
+    color: #e2e8f0 !important;
+}
+
+#pdfPreview .btn-group .btn:hover {
+    background-color: #71A9F7 !important;
+    border-color: #71A9F7 !important;
+    color: white !important;
+}
+
+#pdfPreview .btn-group .btn:disabled {
+    background-color: #2d3748 !important;
+    border-color: #4a5568 !important;
+    color: #a0aec0 !important;
+    opacity: 0.6;
+}
+
+/* PDF Canvas Styling */
+#pdfCanvas1, #pdfCanvas2 {
+    border-color: #4a5568 !important;
+    background-color: white;
+    border-radius: 0.375rem;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+#pdfContainer {
+    max-width: 100%;
+    overflow-x: auto;
+}
+
+/* Responsive canvas sizing */
+@media (max-width: 1200px) {
+    #pdfCanvas1, #pdfCanvas2 {
+        max-height: 60vh !important;
+    }
+}
+
+@media (max-width: 768px) {
+    #pdfContainer {
+        flex-direction: column;
+        align-items: center;
+    }
+    
+    #pdfCanvas1, #pdfCanvas2 {
+        max-height: 50vh !important;
+        max-width: 90vw !important;
+    }
+    
+    #canvas2Container {
+        margin-top: 1rem;
+    }
+}
+
+/* Text Preview Styling */
+.text-preview-content {
+    background-color: #1a202c !important;
+    border: 1px solid #4a5568 !important;
+    border-radius: 0.375rem;
+    padding: 1rem;
+    color: #e2e8f0 !important;
+}
+
+/* Loading Spinner */
+.spinner-border.text-primary {
+    color: #71A9F7 !important;
+}
+
+/* Modal Close Button */
+.btn-close {
+    filter: invert(1) grayscale(100%) brightness(200%);
+}
+
+/* File Info Text */
+.modal-body p {
+    color: #e2e8f0 !important;
+}
+
+.modal-body .text-muted {
+    color: #a0aec0 !important;
+}
+</style>
 {% endblock %}

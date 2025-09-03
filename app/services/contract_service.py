@@ -9,6 +9,7 @@ from sqlalchemy import and_, desc, or_
 from app import db
 from app.models.contract import Contract
 from app.services.file_service import FileService
+from app.services.activity_service import log_contract_changes
 
 
 logger = logging.getLogger(__name__)
@@ -174,6 +175,18 @@ class ContractService:
             if not contract:
                 raise ValueError("Contract not found")
 
+            # Capture old values for versioning
+            old_values = {}
+            tracked_fields = [
+                'title', 'description', 'client_id', 'contract_type', 
+                'status', 'contract_value', 'effective_date', 'expiration_date',
+                'renewal_date'
+            ]
+            
+            for field in tracked_fields:
+                if hasattr(contract, field):
+                    old_values[field] = getattr(contract, field)
+
             # Update fields
             for field, value in update_data.items():
                 if hasattr(contract, field) and field not in [
@@ -214,6 +227,10 @@ class ContractService:
 
             contract.updated_at = datetime.utcnow()
             db.session.commit()
+            
+            # Log field-level changes for versioning
+            if updated_by:
+                log_contract_changes(contract, old_values, updated_by)
 
             logger.info(f"Contract updated: {contract.title} by user {updated_by}")
             return contract

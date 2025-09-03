@@ -37,6 +37,19 @@ def create_app(config_name=None):
     login_manager.init_app(app)
     migrate.init_app(app, db)
     csrf.init_app(app)
+    
+    # Initialize logging database
+    from app.logging_db import init_logging_db, create_logging_tables
+    init_logging_db(app)
+    create_logging_tables(app)
+    
+    # Start activity logger
+    from app.services.activity_service import activity_logger
+    activity_logger.start()
+    
+    # Start cleanup service (runs every 24 hours)
+    from app.services.cleanup_service import cleanup_service
+    cleanup_service.start_scheduled_cleanup(interval_hours=24)
 
     # Configure login manager
     login_manager.login_view = "auth.login"
@@ -51,12 +64,14 @@ def create_app(config_name=None):
     from app.routes.clients import clients_bp
     from app.routes.contracts import contracts_bp
     from app.routes.dashboard import dashboard_bp
+    from app.routes.admin import admin_bp
     from app.routes.api import api
 
     app.register_blueprint(auth_bp, url_prefix="/auth")
     app.register_blueprint(contracts_bp, url_prefix="/contracts")
     app.register_blueprint(clients_bp, url_prefix="/clients")
     app.register_blueprint(dashboard_bp, url_prefix="/dashboard")
+    app.register_blueprint(admin_bp, url_prefix="/admin")
     app.register_blueprint(api)
 
     # Register main routes

@@ -1,0 +1,199 @@
+{% extends "base/layout.html" %}
+
+{% block title %}User Management - Admin{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h3 mb-0 text-primary">
+        <i class="bi bi-people me-2"></i>User Management
+    </h1>
+    <a href="{{ url_for('admin.dashboard') }}" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left me-1"></i>Back to Admin Dashboard
+    </a>
+</div>
+
+<!-- Users List -->
+<div class="card shadow">
+    <div class="card-header py-3 d-flex align-items-center justify-content-between">
+        <h6 class="m-0 fw-bold text-primary">
+            <i class="bi bi-list me-2"></i>System Users
+        </h6>
+        <span class="badge bg-primary">{{ users.total }} total users</span>
+    </div>
+    <div class="card-body">
+        {% if users.items %}
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th>User</th>
+                            <th>Email</th>
+                            <th>Status</th>
+                            <th>Role</th>
+                            <th>Created</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for user in users.items %}
+                        <tr>
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    <div class="me-3">
+                                        <div class="rounded-circle bg-primary d-flex align-items-center justify-content-center" 
+                                             style="width: 40px; height: 40px;">
+                                            <i class="bi bi-person text-white"></i>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <div class="fw-medium">{{ user.username }}</div>
+                                        <small class="text-muted">ID: {{ user.id }}</small>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                <a href="mailto:{{ user.email }}" class="text-decoration-none">
+                                    {{ user.email }}
+                                </a>
+                            </td>
+                            <td>
+                                {% if user.is_active %}
+                                    <span class="badge bg-success">Active</span>
+                                {% else %}
+                                    <span class="badge bg-danger">Inactive</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if user.is_admin %}
+                                    <span class="badge bg-primary">
+                                        <i class="bi bi-shield-check me-1"></i>Admin
+                                    </span>
+                                {% else %}
+                                    <span class="badge bg-secondary">
+                                        <i class="bi bi-person me-1"></i>User
+                                    </span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <small class="text-muted">
+                                    {{ user.created_at.strftime('%Y-%m-%d') if user.created_at else 'N/A' }}
+                                </small>
+                            </td>
+                            <td>
+                                <div class="btn-group btn-group-sm" role="group">
+                                    {% if user.id != current_user.id %}
+                                    <form method="POST" action="{{ url_for('admin.toggle_admin', user_id=user.id) }}" 
+                                          class="d-inline" 
+                                          onsubmit="return confirm('Are you sure you want to {{ 'remove admin privileges from' if user.is_admin else 'grant admin privileges to' }} {{ user.username }}?')">
+                                        {% if user.is_admin %}
+                                            <button type="submit" class="btn btn-outline-danger btn-sm" title="Remove Admin">
+                                                <i class="bi bi-shield-slash"></i>
+                                            </button>
+                                        {% else %}
+                                            <button type="submit" class="btn btn-outline-success btn-sm" title="Make Admin">
+                                                <i class="bi bi-shield-check"></i>
+                                            </button>
+                                        {% endif %}
+                                    </form>
+                                    {% else %}
+                                    <button type="button" class="btn btn-outline-secondary btn-sm" disabled title="Cannot modify your own account">
+                                        <i class="bi bi-lock"></i>
+                                    </button>
+                                    {% endif %}
+                                    
+                                    <a href="{{ url_for('admin.activity', user_id=user.id) }}" 
+                                       class="btn btn-outline-primary btn-sm" 
+                                       title="View User Activity">
+                                        <i class="bi bi-activity"></i>
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="text-center py-5">
+                <i class="bi bi-people fa-3x text-muted mb-3"></i>
+                <h5 class="text-muted">No users found</h5>
+                <p class="text-muted">This shouldn't happen - there should be at least one admin user.</p>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Pagination -->
+{% if users.pages > 1 %}
+<nav aria-label="Users pagination" class="mt-4">
+    <ul class="pagination justify-content-center">
+        {% if users.has_prev %}
+        <li class="page-item">
+            <a class="page-link" href="{{ url_for('admin.users', page=users.prev_num, **request.args) }}">
+                <i class="bi bi-chevron-left"></i> Previous
+            </a>
+        </li>
+        {% endif %}
+
+        {% for page_num in users.iter_pages() %}
+            {% if page_num %}
+                {% if page_num != users.page %}
+                <li class="page-item">
+                    <a class="page-link" href="{{ url_for('admin.users', page=page_num, **request.args) }}">{{ page_num }}</a>
+                </li>
+                {% else %}
+                <li class="page-item active">
+                    <span class="page-link">{{ page_num }}</span>
+                </li>
+                {% endif %}
+            {% else %}
+                <li class="page-item disabled">
+                    <span class="page-link">…</span>
+                </li>
+            {% endif %}
+        {% endfor %}
+
+        {% if users.has_next %}
+        <li class="page-item">
+            <a class="page-link" href="{{ url_for('admin.users', page=users.next_num, **request.args) }}">
+                Next <i class="bi bi-chevron-right"></i>
+            </a>
+        </li>
+        {% endif %}
+    </ul>
+</nav>
+{% endif %}
+
+<!-- Admin User Information -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="alert alert-info">
+            <i class="bi bi-info-circle me-2"></i>
+            <strong>Admin User Management:</strong>
+            <ul class="mb-0 mt-2">
+                <li>Admin users have access to this dashboard and can view all system activity</li>
+                <li>You cannot remove admin privileges from your own account</li>
+                <li>At least one admin user must exist in the system</li>
+                <li>Admin actions are logged and auditable</li>
+            </ul>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+/* Fix user management header alignment */
+.card-header .badge {
+    margin-left: auto !important;
+    order: 2;
+    flex-shrink: 0;
+    flex-grow: 0;
+}
+
+/* User avatar and info alignment */
+.table td .d-flex {
+    align-items: center;
+}
+</style>
+{% endblock %}

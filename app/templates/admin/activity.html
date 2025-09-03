@@ -1,0 +1,225 @@
+{% extends "base/layout.html" %}
+
+{% block title %}Activity Logs - Admin{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h3 mb-0 text-primary">
+        <i class="bi bi-activity me-2"></i>Activity Logs
+    </h1>
+    <a href="{{ url_for('admin.dashboard') }}" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left me-1"></i>Back to Admin Dashboard
+    </a>
+</div>
+
+<!-- Filters -->
+<div class="card shadow mb-4">
+    <div class="card-header">
+        <h6 class="m-0 fw-bold text-primary">
+            <i class="bi bi-funnel me-2"></i>Filters
+        </h6>
+    </div>
+    <div class="card-body">
+        <form method="GET" class="row g-3">
+            <div class="col-md-3">
+                <label for="user_id" class="form-label">User</label>
+                <select class="form-select" id="user_id" name="user_id">
+                    <option value="">All Users</option>
+                    {% for user in users %}
+                    <option value="{{ user.id }}" {{ 'selected' if current_filters.user_id == user.id }}>
+                        {{ user.username }}{% if user.is_admin %} (Admin){% endif %}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label for="action" class="form-label">Action</label>
+                <select class="form-select" id="action" name="action">
+                    <option value="">All Actions</option>
+                    <option value="view" {{ 'selected' if current_filters.action == 'view' }}>View</option>
+                    <option value="create" {{ 'selected' if current_filters.action == 'create' }}>Create</option>
+                    <option value="update" {{ 'selected' if current_filters.action == 'update' }}>Update</option>
+                    <option value="delete" {{ 'selected' if current_filters.action == 'delete' }}>Delete</option>
+                    <option value="restore" {{ 'selected' if current_filters.action == 'restore' }}>Restore</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label for="resource_type" class="form-label">Resource Type</label>
+                <select class="form-select" id="resource_type" name="resource_type">
+                    <option value="">All Types</option>
+                    <option value="contract" {{ 'selected' if current_filters.resource_type == 'contract' }}>Contract</option>
+                    <option value="client" {{ 'selected' if current_filters.resource_type == 'client' }}>Client</option>
+                    <option value="user" {{ 'selected' if current_filters.resource_type == 'user' }}>User</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label for="per_page" class="form-label">Per Page</label>
+                <select class="form-select" id="per_page" name="per_page">
+                    <option value="50" {{ 'selected' if request.args.get('per_page', '100') == '50' }}>50</option>
+                    <option value="100" {{ 'selected' if request.args.get('per_page', '100') == '100' }}>100</option>
+                    <option value="200" {{ 'selected' if request.args.get('per_page', '100') == '200' }}>200</option>
+                </select>
+            </div>
+            <div class="col-12">
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-search me-1"></i>Apply Filters
+                </button>
+                <a href="{{ url_for('admin.activity') }}" class="btn btn-outline-secondary">
+                    <i class="bi bi-x-circle me-1"></i>Clear Filters
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Activity Logs -->
+<div class="card shadow">
+    <div class="card-header py-3 d-flex align-items-center justify-content-between">
+        <h6 class="m-0 fw-bold text-primary">
+            <i class="bi bi-list me-2"></i>Activity Log Entries
+        </h6>
+        <span class="badge bg-primary">{{ activities.total }} total entries</span>
+    </div>
+    <div class="card-body">
+        {% if activities.items %}
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th>Timestamp</th>
+                            <th>User</th>
+                            <th>Action</th>
+                            <th>Resource</th>
+                            <th>Status</th>
+                            <th>Details</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for activity in activities.items %}
+                        <tr>
+                            <td>
+                                <small class="text-muted">
+                                    {{ activity.timestamp.strftime('%Y-%m-%d %H:%M:%S') if activity.timestamp else 'N/A' }}
+                                </small>
+                            </td>
+                            <td>
+                                {% set user = users | selectattr('id', 'equalto', activity.user_id) | first %}
+                                {% if user %}
+                                    {{ user.username }}
+                                    {% if user.is_admin %}
+                                    <span class="badge bg-primary ms-1">Admin</span>
+                                    {% endif %}
+                                {% else %}
+                                    <span class="text-muted">Unknown ({{ activity.user_id }})</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <span class="badge bg-{{ 
+                                    'primary' if activity.action == 'view' 
+                                    else 'success' if activity.action == 'create' 
+                                    else 'warning' if activity.action == 'update'
+                                    else 'danger' if activity.action == 'delete'
+                                    else 'info' if activity.action == 'restore'
+                                    else 'secondary'
+                                }}">
+                                    {{ activity.action.title() }}
+                                </span>
+                            </td>
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    <i class="bi bi-{{ 
+                                        'file-text' if activity.resource_type == 'contract'
+                                        else 'people' if activity.resource_type == 'client'
+                                        else 'person' if activity.resource_type == 'user'
+                                        else 'question-circle'
+                                    }} me-2 text-muted"></i>
+                                    <div>
+                                        <div class="fw-medium">{{ activity.resource_type.title() }}</div>
+                                        {% if activity.resource_title %}
+                                        <small class="text-muted">{{ activity.resource_title }}</small>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                {% if activity.success %}
+                                    <span class="badge bg-success">Success</span>
+                                {% else %}
+                                    <span class="badge bg-danger">Failed</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if activity.error_message %}
+                                    <small class="text-danger">{{ activity.error_message[:100] }}{% if activity.error_message|length > 100 %}...{% endif %}</small>
+                                {% else %}
+                                    <small class="text-muted">-</small>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="text-center py-5">
+                <i class="bi bi-activity fa-3x text-muted mb-3"></i>
+                <h5 class="text-muted">No activity logs found</h5>
+                <p class="text-muted">Try adjusting your filters or check back later.</p>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Pagination -->
+{% if activities.pages > 1 %}
+<nav aria-label="Activity logs pagination" class="mt-4">
+    <ul class="pagination justify-content-center">
+        {% if activities.has_prev %}
+        <li class="page-item">
+            <a class="page-link" href="{{ url_for('admin.activity', page=activities.prev_num, **request.args) }}">
+                <i class="bi bi-chevron-left"></i> Previous
+            </a>
+        </li>
+        {% endif %}
+
+        {% for page_num in activities.iter_pages() %}
+            {% if page_num %}
+                {% if page_num != activities.page %}
+                <li class="page-item">
+                    <a class="page-link" href="{{ url_for('admin.activity', page=page_num, **request.args) }}">{{ page_num }}</a>
+                </li>
+                {% else %}
+                <li class="page-item active">
+                    <span class="page-link">{{ page_num }}</span>
+                </li>
+                {% endif %}
+            {% else %}
+                <li class="page-item disabled">
+                    <span class="page-link">…</span>
+                </li>
+            {% endif %}
+        {% endfor %}
+
+        {% if activities.has_next %}
+        <li class="page-item">
+            <a class="page-link" href="{{ url_for('admin.activity', page=activities.next_num, **request.args) }}">
+                Next <i class="bi bi-chevron-right"></i>
+            </a>
+        </li>
+        {% endif %}
+    </ul>
+</nav>
+{% endif %}
+{% endblock %}
+
+{% block extra_css %}
+<style>
+/* Fix activity log header alignment */
+.card-header .badge {
+    margin-left: auto !important;
+    order: 2;
+    flex-shrink: 0;
+    flex-grow: 0;
+}
+</style>
+{% endblock %}

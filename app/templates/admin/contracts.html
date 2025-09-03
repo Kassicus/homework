@@ -1,0 +1,227 @@
+{% extends "base/layout.html" %}
+
+{% block title %}Contract Management - Admin{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h3 mb-0 text-primary">
+        <i class="bi bi-file-text me-2"></i>Contract Management
+    </h1>
+    <div class="btn-group" role="group">
+        <a href="{{ url_for('admin.contracts', show_deleted=False) }}" 
+           class="btn btn-{{ 'primary' if not show_deleted else 'outline-primary' }}">
+            <i class="bi bi-file-text me-1"></i>Active Contracts
+        </a>
+        <a href="{{ url_for('admin.contracts', show_deleted=True) }}" 
+           class="btn btn-{{ 'primary' if show_deleted else 'outline-primary' }}">
+            <i class="bi bi-trash me-1"></i>Deleted Contracts
+        </a>
+        <a href="{{ url_for('admin.dashboard') }}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i>Back to Admin Dashboard
+        </a>
+    </div>
+</div>
+
+<!-- Contracts List -->
+<div class="card shadow">
+    <div class="card-header py-3 d-flex align-items-center justify-content-between">
+        <h6 class="m-0 fw-bold text-primary">
+            <i class="bi bi-list me-2"></i>{{ 'Deleted' if show_deleted else 'Active' }} Contracts
+        </h6>
+        <span class="badge bg-primary">{{ contracts.total }} total contracts</span>
+    </div>
+    <div class="card-body">
+        {% if contracts.items %}
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th>Title</th>
+                            <th>Client</th>
+                            <th>Status</th>
+                            <th>Value</th>
+                            <th>Created</th>
+                            {% if show_deleted %}
+                            <th>Deleted</th>
+                            {% endif %}
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for contract in contracts.items %}
+                        <tr class="{{ 'table-danger' if contract.deleted_at else '' }}">
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    <div class="me-2">
+                                        <i class="bi bi-file-text text-muted"></i>
+                                    </div>
+                                    <div>
+                                        <div class="fw-medium">
+                                            {% if not contract.deleted_at %}
+                                            <a href="{{ url_for('contracts.show', contract_id=contract.id) }}" 
+                                               class="text-decoration-none">
+                                                {{ contract.title }}
+                                            </a>
+                                            {% else %}
+                                            {{ contract.title }}
+                                            <small class="text-danger ms-1">(Deleted)</small>
+                                            {% endif %}
+                                        </div>
+                                        <small class="text-muted">{{ contract.contract_type }}</small>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                {% if contract.client %}
+                                <a href="{{ url_for('clients.show', client_id=contract.client.id) }}" 
+                                   class="text-decoration-none">
+                                    {{ contract.client.name }}
+                                </a>
+                                {% else %}
+                                <span class="text-muted">No client</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <span class="badge bg-{{ 
+                                    'success' if contract.status == 'active' 
+                                    else 'primary' if contract.status in ['draft', 'under_review']
+                                    else 'danger' if contract.status in ['expired', 'terminated', 'deleted']
+                                    else 'secondary'
+                                }}">
+                                    {{ contract.status.replace('_', ' ').title() }}
+                                </span>
+                            </td>
+                            <td>
+                                {% if contract.contract_value %}
+                                    ${{ "{:,.2f}".format(contract.contract_value) }}
+                                {% else %}
+                                    <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <small class="text-muted">
+                                    {{ contract.created_at.strftime('%Y-%m-%d') if contract.created_at else 'N/A' }}
+                                </small>
+                            </td>
+                            {% if show_deleted %}
+                            <td>
+                                <small class="text-danger">
+                                    {{ contract.deleted_at.strftime('%Y-%m-%d %H:%M') if contract.deleted_at else 'N/A' }}
+                                </small>
+                            </td>
+                            {% endif %}
+                            <td>
+                                <div class="btn-group btn-group-sm" role="group">
+                                    {% if contract.deleted_at %}
+                                        <!-- Restore button for deleted contracts -->
+                                        <form method="POST" action="{{ url_for('contracts.restore', contract_id=contract.id) }}" 
+                                              class="d-inline" 
+                                              onsubmit="return confirm('Are you sure you want to restore this contract?')">
+                                            <button type="submit" class="btn btn-outline-success btn-sm" title="Restore Contract">
+                                                <i class="bi bi-arrow-clockwise"></i>
+                                            </button>
+                                        </form>
+                                    {% else %}
+                                        <!-- View button for active contracts -->
+                                        <a href="{{ url_for('contracts.show', contract_id=contract.id) }}" 
+                                           class="btn btn-outline-primary btn-sm" 
+                                           title="View Contract">
+                                            <i class="bi bi-eye"></i>
+                                        </a>
+                                        
+                                        <!-- Edit button for active contracts -->
+                                        <a href="{{ url_for('contracts.edit', contract_id=contract.id) }}" 
+                                           class="btn btn-outline-primary btn-sm" 
+                                           title="Edit Contract">
+                                            <i class="bi bi-pencil"></i>
+                                        </a>
+                                    {% endif %}
+                                    
+                                    <!-- Activity log button -->
+                                    <a href="{{ url_for('admin.activity', resource_type='contract', resource_id=contract.id) }}" 
+                                       class="btn btn-outline-primary btn-sm" 
+                                       title="View Activity Log">
+                                        <i class="bi bi-activity"></i>
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="text-center py-5">
+                <i class="bi bi-file-text fa-3x text-muted mb-3"></i>
+                <h5 class="text-muted">No {{ 'deleted' if show_deleted else 'active' }} contracts found</h5>
+                <p class="text-muted">
+                    {% if show_deleted %}
+                        No contracts have been deleted yet.
+                    {% else %}
+                        No active contracts in the system.
+                    {% endif %}
+                </p>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Pagination -->
+{% if contracts.pages > 1 %}
+<nav aria-label="Contracts pagination" class="mt-4">
+    <ul class="pagination justify-content-center">
+        {% if contracts.has_prev %}
+        <li class="page-item">
+            <a class="page-link" href="{{ url_for('admin.contracts', page=contracts.prev_num, **request.args) }}">
+                <i class="bi bi-chevron-left"></i> Previous
+            </a>
+        </li>
+        {% endif %}
+
+        {% for page_num in contracts.iter_pages() %}
+            {% if page_num %}
+                {% if page_num != contracts.page %}
+                <li class="page-item">
+                    <a class="page-link" href="{{ url_for('admin.contracts', page=page_num, **request.args) }}">{{ page_num }}</a>
+                </li>
+                {% else %}
+                <li class="page-item active">
+                    <span class="page-link">{{ page_num }}</span>
+                </li>
+                {% endif %}
+            {% else %}
+                <li class="page-item disabled">
+                    <span class="page-link">…</span>
+                </li>
+            {% endif %}
+        {% endfor %}
+
+        {% if contracts.has_next %}
+        <li class="page-item">
+            <a class="page-link" href="{{ url_for('admin.contracts', page=contracts.next_num, **request.args) }}">
+                Next <i class="bi bi-chevron-right"></i>
+            </a>
+        </li>
+        {% endif %}
+    </ul>
+</nav>
+{% endif %}
+
+<!-- Information Alert -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="alert alert-info">
+            <i class="bi bi-info-circle me-2"></i>
+            <strong>Contract Management:</strong>
+            <ul class="mb-0 mt-2">
+                <li>Deleted contracts are soft-deleted and retained for 30 days before permanent deletion</li>
+                <li>Only admin users can view and restore deleted contracts</li>
+                <li>All contract actions are logged and auditable</li>
+                <li>Use the activity log button to see the full history of contract changes</li>
+            </ul>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+

@@ -5,11 +5,8 @@
             <form method="GET" action="{{ search_action }}" class="search-form">
                 <div class="row g-2 align-items-end">
                     <!-- Main Search Bar -->
-                    <div class="col-md-6">
+                    <div class="col-md-10">
                         <div class="form-group position-relative">
-                            <label for="search_query" class="form-label small text-muted mb-1">
-                                <i class="bi bi-search me-1"></i>Search
-                            </label>
                             <div class="input-group">
                                 <input 
                                     type="text" 
@@ -27,26 +24,11 @@
                         </div>
                     </div>
                     
-                    <!-- Search Type Dropdown -->
-                    <div class="col-md-3">
-                        <div class="form-group">
-                            <label for="search_type" class="form-label small text-muted mb-1">Type</label>
-                            <select class="form-select" id="search_type" name="type">
-                                <option value="">All Types</option>
-                                {% for type_value, type_label in search_types|default([]) %}
-                                <option value="{{ type_value }}" {{ 'selected' if request.args.get('type') == type_value }}>
-                                    {{ type_label }}
-                                </option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                    </div>
-                    
                     <!-- Search Button -->
-                    <div class="col-md-3">
+                    <div class="col-md-2">
                         <div class="d-grid">
                             <button type="submit" class="btn btn-primary btn-lg">
-                                <i class="bi bi-search me-2"></i>Search
+                                <i class="bi bi-search"></i>
                             </button>
                         </div>
                     </div>
@@ -66,7 +48,7 @@
                 
                 <!-- Advanced Search Criteria -->
                 <div class="collapse mt-3" id="advancedSearch{{ search_id|default('') }}">
-                    <div class="card card-body bg-light border-0">
+                    <div class="card card-body border-0" style="background-color: var(--bg-tertiary);">
                         <div class="row g-3">
                             <!-- Date Range -->
                             <div class="col-md-6">
@@ -112,9 +94,24 @@
                         
                         <!-- Additional Filters -->
                         <div class="row g-3 mt-2">
+                            <!-- Search Type Filter -->
+                            {% if search_types|default([]) %}
+                            <div class="col-md-4">
+                                <label for="search_type" class="form-label small text-muted mb-1">Search Type</label>
+                                <select class="form-select" id="search_type" name="type">
+                                    <option value="">All Types</option>
+                                    {% for type_value, type_label in search_types|default([]) %}
+                                    <option value="{{ type_value }}" {{ 'selected' if request.args.get('type') == type_value }}>
+                                        {{ type_label }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            {% endif %}
+                            
                             <!-- Client Filter (for contracts) -->
                             {% if show_client_filter|default(false) %}
-                            <div class="col-md-6">
+                            <div class="col-md-4">
                                 <label for="client" class="form-label small text-muted mb-1">Client</label>
                                 <select class="form-select" id="client" name="client">
                                     <option value="">All Clients</option>
@@ -129,7 +126,7 @@
                             
                             <!-- Contract Type Filter (for contracts) -->
                             {% if show_contract_type_filter|default(false) %}
-                            <div class="col-md-6">
+                            <div class="col-md-4">
                                 <label for="contract_type" class="form-label small text-muted mb-1">Contract Type</label>
                                 <select class="form-select" id="contract_type" name="contract_type">
                                     <option value="">All Types</option>
@@ -183,7 +180,7 @@
             <i class="bi bi-info-circle me-1"></i>
             {{ search_results_summary }}
         </div>
-        {% if request.args.get('q') or request.args.get('date_from') or request.args.get('date_to') or request.args.get('status') %}
+        {% if request.args.get('q') or request.args.get('date_from') or request.args.get('date_to') or request.args.get('status') or request.args.get('client') or request.args.get('contract_type') or request.args.get('type') or request.args.get('organization') or request.args.get('expiring_soon') %}
         <a href="{{ request.path }}" class="btn btn-outline-secondary btn-sm">
             <i class="bi bi-x-circle me-1"></i>Clear Search
         </a>

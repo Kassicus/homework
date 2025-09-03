@@ -18,7 +18,7 @@
 </div>
 
 <!-- Universal Search Component -->
-{% set search_action = url_for('contracts.search') %}
+{% set search_action = url_for('contracts.index') %}
 {% set search_placeholder = 'Search contracts by title, description, or content...' %}
 {% set search_types = [
     ('Service', 'Service Agreement'),
@@ -85,22 +85,31 @@
                                     <th>Value</th>
                                     <th>Created</th>
                                     <th>Expires</th>
-                                    <th>Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {% for contract in contracts.items %}
                                 <tr>
                                     <td>
-                                        <strong>{{ contract.title }}</strong>
+                                        <a href="{{ url_for('contracts.show', contract_id=contract.id) }}" class="text-decoration-none">
+                                            <strong style="color: #71A9F7;">{{ contract.title }}</strong>
+                                        </a>
                                         {% if contract.description %}
                                             <br><small class="text-muted">{{ contract.description[:50] }}{% if contract.description|length > 50 %}...{% endif %}</small>
                                         {% endif %}
                                     </td>
-                                    <td>{{ contract.client.name if contract.client else 'N/A' }}</td>
+                                    <td>
+                                        {% if contract.client %}
+                                            <a href="{{ url_for('clients.show', client_id=contract.client.id) }}" class="text-decoration-none">
+                                                {{ contract.client.name }}
+                                            </a>
+                                        {% else %}
+                                            N/A
+                                        {% endif %}
+                                    </td>
                                     <td>{{ contract.contract_type }}</td>
                                     <td>
-                                        <span class="badge bg-{{ 'success' if contract.status == 'active' else 'warning' if contract.status == 'draft' else 'secondary' }}">
+                                        <span class="badge bg-{{ 'success' if contract.status == 'active' else 'primary' if contract.status in ['draft', 'under_review'] else 'danger' if contract.status in ['expired', 'terminated'] else 'secondary' }}">
                                             {{ contract.status|title }}
                                         </span>
                                     </td>
@@ -122,22 +131,6 @@
                                         {% else %}
                                             N/A
                                         {% endif %}
-                                    </td>
-                                    <td>
-                                        <div class="btn-group" role="group">
-                                            <a href="{{ url_for('contracts.show', contract_id=contract.id) }}" 
-                                               class="btn btn-sm btn-outline-primary" title="View">
-                                                <i class="bi bi-eye"></i>
-                                            </a>
-                                            <a href="{{ url_for('contracts.edit', contract_id=contract.id) }}" 
-                                               class="btn btn-sm btn-outline-secondary" title="Edit">
-                                                <i class="bi bi-pencil"></i>
-                                            </a>
-                                            <button type="button" class="btn btn-sm btn-outline-danger" title="Delete"
-                                                    onclick="confirmDelete({{ contract.id }}, '{{ contract.title }}')">
-                                                <i class="bi bi-trash"></i>
-                                            </button>
-                                        </div>
                                     </td>
                                 </tr>
                                 {% endfor %}
@@ -218,3 +211,36 @@ function confirmDelete(contractId, contractTitle) {
 }
 </script>
 {% endblock %}
+
+{% block extra_css %}
+<style>
+/* Table row padding for better spacing */
+.table td {
+    padding: 1rem 0.75rem !important;
+    vertical-align: middle !important;
+}
+
+.table th {
+    padding: 1rem 0.75rem !important;
+}
+
+/* Ensure contract titles are blue */
+.table td a strong {
+    color: #71A9F7 !important;
+}
+
+/* Additional spacing for badge elements */
+.table .badge {
+    padding: 0.5rem 0.75rem;
+}
+
+/* Fix export button positioning */
+.card-header .btn-group {
+    margin-left: auto !important;
+    order: 2;
+    flex-shrink: 0;
+    flex-grow: 0;
+}
+</style>
+{% endblock %}
+

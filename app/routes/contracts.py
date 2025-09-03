@@ -19,6 +19,11 @@ from app import db
 from app.models.client import Client
 from app.models.contract import Contract
 from app.services.contract_service import ContractService
+from app.utils.activity_decorators import (
+    log_view, log_create, log_update, log_delete, log_restore,
+    get_contract_info
+)
+from app.models.activity_log import ActivityLog
 
 
 logger = logging.getLogger(__name__)
@@ -28,30 +33,10 @@ contracts_bp = Blueprint("contracts", __name__)
 @contracts_bp.route("/")
 @login_required
 def index():
-    """Contracts list page"""
-    page = request.args.get("page", 1, type=int)
-    per_page = request.args.get("per_page", 20, type=int)
-
-    try:
-        contracts = ContractService.get_all_contracts(
-            include_deleted=False, page=page, per_page=per_page
-        )
-
-        return render_template("contracts/index.html", contracts=contracts)
-
-    except Exception as e:
-        logger.error(f"Error loading contracts: {e}")
-        flash("An error occurred while loading contracts.", "error")
-        return render_template("contracts/index.html", contracts=None)
-
-
-@contracts_bp.route("/search")
-@login_required
-def search():
-    """Contract search page"""
+    """Contracts list page with search functionality"""
     search_term = request.args.get("q", "")
     status_filter = request.args.get("status", "")
-    client_filter = request.args.get("client_id", "")
+    client_filter = request.args.get("client", "")
     contract_type_filter = request.args.get("contract_type", "")
     date_from = request.args.get("date_from", "")
     date_to = request.args.get("date_to", "")
@@ -60,45 +45,58 @@ def search():
     per_page = request.args.get("per_page", 20, type=int)
 
     try:
-        # Build filters
-        filters = {}
-        if status_filter:
-            filters["status"] = status_filter
-        if client_filter:
-            filters["client_id"] = int(client_filter)
-        if contract_type_filter:
-            filters["contract_type"] = contract_type_filter
-        if date_from:
-            filters["date_from"] = date_from
-        if date_to:
-            filters["date_to"] = date_to
-        if expiring_soon:
-            filters["expiring_soon"] = int(expiring_soon)
+        # Debug logging
+        logger.info(f"Contract search params - q: '{search_term}', status: '{status_filter}', client: '{client_filter}', type: '{contract_type_filter}', date_from: '{date_from}', date_to: '{date_to}', expiring_soon: '{expiring_soon}'")
+        
+        if search_term or status_filter or client_filter or contract_type_filter or date_from or date_to or expiring_soon:
+            # Build filters for search
+            filters = {}
+            if status_filter:
+                filters["status"] = status_filter
+            if client_filter:
+                filters["client_id"] = int(client_filter)
+            if contract_type_filter:
+                filters["contract_type"] = contract_type_filter
+            if date_from:
+                filters["date_from"] = date_from
+            if date_to:
+                filters["date_to"] = date_to
+            if expiring_soon:
+                filters["expiring_soon"] = int(expiring_soon)
 
-        # Perform search
-        contracts = ContractService.search_contracts(
-            search_term=search_term, filters=filters, page=page, per_page=per_page
-        )
+            # Perform search
+            contracts = ContractService.search_contracts(
+                search_term=search_term, filters=filters, page=page, per_page=per_page
+            )
+        else:
+            # Show all contracts when no search parameters
+            contracts = ContractService.get_all_contracts(
+                include_deleted=False, page=page, per_page=per_page
+            )
 
         # Get clients for filter dropdown
         clients = Client.query.all()
 
         return render_template(
-            "contracts/search.html",
+            "contracts/index.html",
             contracts=contracts,
             search_term=search_term,
-            filters=filters,
+            filters=request.args,
             clients=clients,
         )
 
     except Exception as e:
-        logger.error(f"Error searching contracts: {e}")
-        flash("An error occurred while searching contracts.", "error")
-        return render_template("contracts/search.html", contracts=None)
+        logger.error(f"Error loading contracts: {e}")
+        flash("An error occurred while loading contracts.", "error")
+        return render_template("contracts/index.html", contracts=None)
+
+
+
 
 
 @contracts_bp.route("/<int:contract_id>")
 @login_required
+@log_view(ActivityLog.RESOURCE_CONTRACT, get_contract_info)
 def show(contract_id):
     """Show contract details"""
     try:
@@ -143,6 +141,7 @@ def show(contract_id):
 
 @contracts_bp.route("/new", methods=["GET", "POST"])
 @login_required
+@log_create(ActivityLog.RESOURCE_CONTRACT, lambda *args, **kwargs: (None, None))
 def new():
     """Create new contract"""
     from app.forms.contract_forms import ContractForm
@@ -208,6 +207,7 @@ def new():
 
 @contracts_bp.route("/<int:contract_id>/edit", methods=["GET", "POST"])
 @login_required
+@log_update(ActivityLog.RESOURCE_CONTRACT, get_contract_info)
 def edit(contract_id):
     """Edit contract"""
     from app.forms.contract_forms import ContractForm
@@ -287,6 +287,7 @@ def edit(contract_id):
 
 @contracts_bp.route("/<int:contract_id>/delete", methods=["POST"])
 @login_required
+@log_delete(ActivityLog.RESOURCE_CONTRACT, get_contract_info)
 def delete(contract_id):
     """Soft delete contract"""
     try:
@@ -303,6 +304,7 @@ def delete(contract_id):
 
 @contracts_bp.route("/<int:contract_id>/restore", methods=["POST"])
 @login_required
+@log_restore(ActivityLog.RESOURCE_CONTRACT, get_contract_info)
 def restore(contract_id):
     """Restore soft-deleted contract"""
     try:
