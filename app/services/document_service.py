@@ -8,6 +8,8 @@ import os
 from app import db
 from app.models.contract_document import ContractDocument
 from app.services.file_service import FileService
+from app.services.activity_service import log_user_activity
+from app.models.activity_log import ActivityLog
 
 
 logger = logging.getLogger(__name__)
@@ -50,6 +52,35 @@ class DocumentService:
             db.session.add(document)
             db.session.commit()
             
+            # Log detailed document upload activity
+            try:
+                from app.models.contract import Contract
+                contract = Contract.query.get(contract_id)
+                contract_title = contract.title if contract else f"Contract {contract_id}"
+                
+                log_user_activity(
+                    action=ActivityLog.ACTION_DOCUMENT_UPLOAD,
+                    resource_type=ActivityLog.RESOURCE_DOCUMENT,
+                    resource_id=document.id,
+                    resource_title=f"{document.original_filename} ({document.get_file_size_human()}) - {contract_title}",
+                    success=True,
+                    additional_data={
+                        'contract_id': contract_id,
+                        'contract_title': contract_title,
+                        'filename': document.original_filename,
+                        'file_size': document.file_size,
+                        'file_size_human': document.get_file_size_human(),
+                        'mime_type': document.mime_type,
+                        'document_type': document.document_type,
+                        'description': document.description,
+                        'is_primary': document.is_primary,
+                        'has_extracted_text': bool(document.extracted_text),
+                        'uploaded_by': uploaded_by
+                    }
+                )
+            except Exception as log_error:
+                logger.warning(f"Failed to log document upload: {log_error}")
+            
             logger.info(f"Document uploaded: {file_info['filename']} to contract {contract_id}")
             return document
             
@@ -71,16 +102,58 @@ class DocumentService:
             if contract_id and document.contract_id != contract_id:
                 raise ValueError("Document does not belong to specified contract")
             
+            # Store document info for logging before deletion
+            document_info = {
+                'filename': document.original_filename,
+                'file_size': document.file_size,
+                'file_size_human': document.get_file_size_human(),
+                'mime_type': document.mime_type,
+                'document_type': document.document_type,
+                'is_primary': document.is_primary,
+                'contract_id': document.contract_id,
+                'uploaded_by': document.uploaded_by
+            }
+            
+            # Get contract info for logging
+            from app.models.contract import Contract
+            contract = Contract.query.get(document.contract_id)
+            contract_title = contract.title if contract else f"Contract {document.contract_id}"
+            
             # Delete file from disk
             document.delete_file_from_disk()
             
             # If this was the primary document, set another document as primary
-            if document.is_primary:
+            was_primary = document.is_primary
+            if was_primary:
                 DocumentService._set_next_primary_document(document.contract_id, exclude_id=document.id)
             
             # Delete from database
             db.session.delete(document)
             db.session.commit()
+            
+            # Log document deletion activity
+            try:
+                log_user_activity(
+                    action=ActivityLog.ACTION_DOCUMENT_DELETE,
+                    resource_type=ActivityLog.RESOURCE_DOCUMENT,
+                    resource_id=document_id,
+                    resource_title=f"{document_info['filename']} ({document_info['file_size_human']}) - {contract_title}",
+                    success=True,
+                    additional_data={
+                        'contract_id': document_info['contract_id'],
+                        'contract_title': contract_title,
+                        'filename': document_info['filename'],
+                        'file_size': document_info['file_size'],
+                        'file_size_human': document_info['file_size_human'],
+                        'mime_type': document_info['mime_type'],
+                        'document_type': document_info['document_type'],
+                        'was_primary': was_primary,
+                        'uploaded_by': document_info['uploaded_by'],
+                        'deletion_method': 'hard_delete'
+                    }
+                )
+            except Exception as log_error:
+                logger.warning(f"Failed to log document deletion: {log_error}")
             
             logger.info(f"Document deleted: {document.file_name} from contract {document.contract_id}")
             return True
@@ -101,12 +174,40 @@ class DocumentService:
             if not document:
                 raise ValueError("Document not found")
             
+            # Get contract info for logging
+            from app.models.contract import Contract
+            contract = Contract.query.get(contract_id)
+            contract_title = contract.title if contract else f"Contract {contract_id}"
+            
             # Unset other primary documents
             DocumentService._unset_primary_documents(contract_id)
             
             # Set this document as primary
             document.is_primary = True
             db.session.commit()
+            
+            # Log set primary document activity
+            try:
+                log_user_activity(
+                    action=ActivityLog.ACTION_DOCUMENT_SET_PRIMARY,
+                    resource_type=ActivityLog.RESOURCE_DOCUMENT,
+                    resource_id=document_id,
+                    resource_title=f"{document.original_filename} ({document.get_file_size_human()}) - {contract_title} [PRIMARY]",
+                    success=True,
+                    additional_data={
+                        'contract_id': contract_id,
+                        'contract_title': contract_title,
+                        'filename': document.original_filename,
+                        'file_size': document.file_size,
+                        'file_size_human': document.get_file_size_human(),
+                        'mime_type': document.mime_type,
+                        'document_type': document.document_type,
+                        'uploaded_by': document.uploaded_by,
+                        'action_type': 'set_primary'
+                    }
+                )
+            except Exception as log_error:
+                logger.warning(f"Failed to log set primary document: {log_error}")
             
             logger.info(f"Document set as primary: {document.file_name} for contract {contract_id}")
             return document
@@ -180,6 +281,30 @@ class DocumentService:
             
             db.session.add(document)
             db.session.commit()
+            
+            # Log document migration activity
+            try:
+                log_user_activity(
+                    action=ActivityLog.ACTION_DOCUMENT_MIGRATE,
+                    resource_type=ActivityLog.RESOURCE_DOCUMENT,
+                    resource_id=document.id,
+                    resource_title=f"{document.original_filename} ({document.get_file_size_human()}) - {contract.title} [MIGRATED]",
+                    success=True,
+                    additional_data={
+                        'contract_id': contract.id,
+                        'contract_title': contract.title,
+                        'filename': document.original_filename,
+                        'file_size': document.file_size,
+                        'file_size_human': document.get_file_size_human(),
+                        'mime_type': document.mime_type,
+                        'document_type': document.document_type,
+                        'migration_source': 'legacy_single_document',
+                        'uploaded_by': document.uploaded_by,
+                        'original_created_at': contract.created_at.isoformat() if contract.created_at else None
+                    }
+                )
+            except Exception as log_error:
+                logger.warning(f"Failed to log document migration: {log_error}")
             
             logger.info(f"Migrated legacy document for contract {contract.id}: {contract.file_name}")
             return document

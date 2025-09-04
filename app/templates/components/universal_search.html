@@ -126,6 +126,22 @@
                             </div>
                             {% endif %}
                             
+                            <!-- DocuSign Status Filter (for contracts) -->
+                            {% if show_docusign_filter|default(false) %}
+                            <div class="col-md-4">
+                                <label for="docusign_status" class="form-label small text-muted mb-1">Signature Status</label>
+                                <select class="form-select" id="docusign_status" name="docusign_status">
+                                    <option value="">All Signature Statuses</option>
+                                    <option value="not_sent" {{ 'selected' if request.args.get('docusign_status') == 'not_sent' }}>Not Sent</option>
+                                    <option value="sent" {{ 'selected' if request.args.get('docusign_status') == 'sent' }}>Sent</option>
+                                    <option value="delivered" {{ 'selected' if request.args.get('docusign_status') == 'delivered' }}>Delivered</option>
+                                    <option value="completed" {{ 'selected' if request.args.get('docusign_status') == 'completed' }}>Completed</option>
+                                    <option value="declined" {{ 'selected' if request.args.get('docusign_status') == 'declined' }}>Declined</option>
+                                    <option value="voided" {{ 'selected' if request.args.get('docusign_status') == 'voided' }}>Voided</option>
+                                </select>
+                            </div>
+                            {% endif %}
+                            
                             <!-- Organization Filter (for clients) -->
                             {% if show_organization_filter|default(false) %}
                             <div class="col-md-6">

@@ -31,11 +31,26 @@ class ActivityLog(LoggingBase):
     ACTION_UPDATE = "update"
     ACTION_DELETE = "delete"
     ACTION_RESTORE = "restore"
+    
+    # DocuSign-specific actions
+    ACTION_DOCUSIGN_SEND = "docusign_send"
+    ACTION_DOCUSIGN_CHECK = "docusign_check"
+    ACTION_DOCUSIGN_VOID = "docusign_void"
+    ACTION_DOCUSIGN_STATUS_CHANGE = "docusign_status_change"
+    
+    # Document-specific actions
+    ACTION_DOCUMENT_UPLOAD = "document_upload"
+    ACTION_DOCUMENT_DELETE = "document_delete"
+    ACTION_DOCUMENT_DOWNLOAD = "document_download"
+    ACTION_DOCUMENT_SET_PRIMARY = "document_set_primary"
+    ACTION_DOCUMENT_MIGRATE = "document_migrate"
 
     # Resource type constants
     RESOURCE_CONTRACT = "contract"
     RESOURCE_CLIENT = "client"
     RESOURCE_USER = "user"
+    RESOURCE_DOCUSIGN = "docusign"
+    RESOURCE_DOCUMENT = "document"
 
     def __repr__(self):
         return f"<ActivityLog {self.user_id}:{self.action}:{self.resource_type}>"

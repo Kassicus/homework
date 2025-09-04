@@ -1278,3 +1278,192 @@ h1, h2, h3, h4, h5, h6 {
         padding: 1.5rem;
     }
 }
+
+/* DocuSign Integration Styling */
+.docusign-status-badge {
+    font-size: 0.75rem !important;
+    padding: 0.25rem 0.5rem !important;
+    border-radius: 0.375rem !important;
+}
+
+.docusign-status-completed {
+    background-color: var(--success-color) !important;
+    color: white !important;
+}
+
+.docusign-status-delivered {
+    background-color: #fbbf24 !important;
+    color: white !important;
+}
+
+.docusign-status-sent {
+    background-color: var(--primary-color) !important;
+    color: white !important;
+}
+
+.docusign-status-declined {
+    background-color: var(--danger-color) !important;
+    color: white !important;
+}
+
+.docusign-status-voided {
+    background-color: var(--secondary-color) !important;
+    color: white !important;
+}
+
+.docusign-status-not-sent {
+    background-color: var(--bg-tertiary) !important;
+    color: var(--text-muted) !important;
+    border: 1px solid var(--border-color) !important;
+}
+
+/* DocuSign Form Elements */
+.docusign-form .form-label {
+    color: var(--text-primary) !important;
+    font-weight: 500 !important;
+}
+
+.docusign-form .form-control {
+    background-color: var(--bg-tertiary) !important;
+    border-color: var(--border-color) !important;
+    color: var(--text-primary) !important;
+}
+
+.docusign-form .form-control:focus {
+    background-color: var(--bg-tertiary) !important;
+    border-color: var(--primary-color) !important;
+    box-shadow: 0 0 0 0.2rem rgba(113, 169, 247, 0.25) !important;
+}
+
+.docusign-form .form-control::placeholder {
+    color: var(--text-muted) !important;
+}
+
+.docusign-form .form-text {
+    color: var(--text-muted) !important;
+}
+
+/* DocuSign Alert */
+.alert.docusign-alert {
+    background-color: rgba(113, 169, 247, 0.1) !important;
+    border-color: var(--primary-color) !important;
+    color: var(--text-primary) !important;
+}
+
+.alert.docusign-alert strong {
+    color: var(--primary-color) !important;
+}
+
+/* DocuSign Info Panel */
+.docusign-info {
+    color: var(--text-primary) !important;
+}
+
+.docusign-info h6 {
+    color: var(--text-primary) !important;
+}
+
+.docusign-info p {
+    color: var(--text-secondary) !important;
+}
+
+.docusign-info .text-muted {
+    color: var(--text-muted) !important;
+}
+
+.docusign-info strong {
+    color: var(--text-primary) !important;
+}
+
+.docusign-info small {
+    color: var(--text-muted) !important;
+}
+
+/* DocuSign How-it-works Card */
+.docusign-howto {
+    background-color: var(--bg-tertiary) !important;
+    border-color: var(--border-color) !important;
+}
+
+.docusign-howto .card-body {
+    background-color: var(--bg-tertiary) !important;
+}
+
+.docusign-howto .card-title {
+    color: var(--text-primary) !important;
+}
+
+.docusign-howto .list-unstyled li {
+    color: var(--text-secondary) !important;
+}
+
+.docusign-howto .bi {
+    color: var(--primary-color) !important;
+}
+
+/* DocuSign Button Styling */
+.btn-docusign-primary {
+    background-color: var(--primary-color) !important;
+    border-color: var(--primary-color) !important;
+    color: white !important;
+}
+
+.btn-docusign-primary:hover {
+    background-color: rgba(113, 169, 247, 0.8) !important;
+    border-color: rgba(113, 169, 247, 0.8) !important;
+    color: white !important;
+}
+
+/* DocuSign Icon Colors */
+.docusign-info .bi-envelope-paper {
+    color: var(--primary-color) !important;
+}
+
+.docusign-info .bi-lightbulb {
+    color: #fbbf24 !important;
+}
+
+.docusign-info .bi-shield-check {
+    color: var(--success-color) !important;
+}
+
+/* DocuSign Document Selector */
+.docusign-form .form-select {
+    background-color: var(--bg-tertiary) !important;
+    border-color: var(--border-color) !important;
+    color: var(--text-primary) !important;
+}
+
+.docusign-form .form-select:focus {
+    background-color: var(--bg-tertiary) !important;
+    border-color: var(--primary-color) !important;
+    box-shadow: 0 0 0 0.2rem rgba(113, 169, 247, 0.25) !important;
+}
+
+.docusign-form .form-select option {
+    background-color: var(--bg-tertiary) !important;
+    color: var(--text-primary) !important;
+}
+
+.docusign-form .btn-docusign-primary:disabled {
+    background-color: var(--bg-surface) !important;
+    border-color: var(--border-color) !important;
+    color: var(--text-muted) !important;
+    opacity: 0.6;
+}
+
+/* DocuSign Header Layout Fix */
+.card-header .docusign-status {
+    order: 2 !important;
+    flex-shrink: 0 !important;
+    flex-grow: 0 !important;
+    margin-left: auto !important;
+}
+
+/* Ensure the h6 in DocuSign header stays on left */
+.card-header h6.text-primary {
+    order: 1 !important;
+    flex-shrink: 0 !important;
+    flex-grow: 0 !important;
+    margin-right: auto !important;
+}

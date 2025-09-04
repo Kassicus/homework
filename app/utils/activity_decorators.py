@@ -90,6 +90,43 @@ def log_restore(resource_type, get_resource_info=None):
     return log_activity(ActivityLog.ACTION_RESTORE, resource_type, get_resource_info)
 
 
+# DocuSign-specific logging decorators
+def log_docusign_send(get_resource_info=None):
+    """Decorator for logging DocuSign document sending"""
+    return log_activity(ActivityLog.ACTION_DOCUSIGN_SEND, ActivityLog.RESOURCE_CONTRACT, get_resource_info)
+
+
+def log_docusign_check(get_resource_info=None):
+    """Decorator for logging DocuSign status checks"""
+    return log_activity(ActivityLog.ACTION_DOCUSIGN_CHECK, ActivityLog.RESOURCE_CONTRACT, get_resource_info)
+
+
+def log_docusign_void(get_resource_info=None):
+    """Decorator for logging DocuSign envelope voiding"""
+    return log_activity(ActivityLog.ACTION_DOCUSIGN_VOID, ActivityLog.RESOURCE_CONTRACT, get_resource_info)
+
+
+# Document-specific logging decorators
+def log_document_upload(get_resource_info=None):
+    """Decorator for logging document uploads"""
+    return log_activity(ActivityLog.ACTION_DOCUMENT_UPLOAD, ActivityLog.RESOURCE_DOCUMENT, get_resource_info)
+
+
+def log_document_delete(get_resource_info=None):
+    """Decorator for logging document deletions"""
+    return log_activity(ActivityLog.ACTION_DOCUMENT_DELETE, ActivityLog.RESOURCE_DOCUMENT, get_resource_info)
+
+
+def log_document_download(get_resource_info=None):
+    """Decorator for logging document downloads"""
+    return log_activity(ActivityLog.ACTION_DOCUMENT_DOWNLOAD, ActivityLog.RESOURCE_DOCUMENT, get_resource_info)
+
+
+def log_document_set_primary(get_resource_info=None):
+    """Decorator for logging setting document as primary"""
+    return log_activity(ActivityLog.ACTION_DOCUMENT_SET_PRIMARY, ActivityLog.RESOURCE_DOCUMENT, get_resource_info)
+
+
 # Helper functions for extracting resource information
 def get_contract_info(contract_id=None, *args, **kwargs):
     """Extract contract information for logging"""
@@ -134,6 +171,55 @@ def get_user_info(user_id=None, *args, **kwargs):
             return user_id, user.username
     
     return user_id, None
+
+
+def get_docusign_info(contract_id=None, *args, **kwargs):
+    """Extract DocuSign-related information for logging"""
+    from app.models.contract import Contract
+    
+    if contract_id is None:
+        contract_id = kwargs.get('contract_id') or kwargs.get('id')
+    
+    if contract_id:
+        contract = Contract.query.get(contract_id)
+        if contract:
+            # Include DocuSign envelope ID in the title for better tracking
+            title = f"{contract.title}"
+            if contract.docusign_envelope_id:
+                title += f" (Envelope: {contract.docusign_envelope_id[:8]}...)"
+            return contract_id, title
+    
+    return contract_id, None
+
+
+def get_document_info(document_id=None, contract_id=None, *args, **kwargs):
+    """Extract document information for logging"""
+    from app.models.contract_document import ContractDocument
+    from app.models.contract import Contract
+    
+    # Try to get document_id from various sources
+    if document_id is None:
+        document_id = kwargs.get('document_id') or kwargs.get('id')
+    
+    if contract_id is None:
+        contract_id = kwargs.get('contract_id')
+    
+    if document_id:
+        document = ContractDocument.query.get(document_id)
+        if document:
+            # Create descriptive title with contract context
+            contract = Contract.query.get(document.contract_id) if document.contract_id else None
+            contract_title = contract.title if contract else f"Contract {document.contract_id}"
+            
+            title = f"{document.original_filename}"
+            title += f" ({document.get_file_size_human()})"
+            title += f" - {contract_title}"
+            if document.is_primary:
+                title += " [PRIMARY]"
+            
+            return document_id, title
+    
+    return document_id, None
 
 
 # Admin-only decorator

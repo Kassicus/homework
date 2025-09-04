@@ -39,6 +39,15 @@ class Contract(db.Model):
     updated_at = db.Column(
         db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False
     )
+    
+    # DocuSign integration fields (for mock and real integration)
+    docusign_envelope_id = db.Column(db.String(100), nullable=True, index=True)
+    docusign_status = db.Column(db.String(50), nullable=True, index=True)  # sent, delivered, completed, declined, voided
+    docusign_sent_date = db.Column(db.DateTime, nullable=True)
+    docusign_completed_date = db.Column(db.DateTime, nullable=True)
+    docusign_recipient_email = db.Column(db.String(255), nullable=True)
+    docusign_recipient_name = db.Column(db.String(255), nullable=True)
+    docusign_document_id = db.Column(db.Integer, db.ForeignKey('contract_documents.id'), nullable=True)  # Which document was sent
 
     # Relationships
     client = db.relationship("Client", lazy="joined", back_populates="contracts")
@@ -48,7 +57,15 @@ class Contract(db.Model):
         back_populates="contract",
         lazy="dynamic",
         order_by="ContractDocument.uploaded_at.desc()",
-        cascade="all, delete-orphan"
+        cascade="all, delete-orphan",
+        foreign_keys="ContractDocument.contract_id"
+    )
+    
+    # Relationship to the specific document sent via DocuSign
+    docusign_document = db.relationship(
+        "ContractDocument",
+        foreign_keys=[docusign_document_id],
+        lazy="joined"
     )
     status_history = db.relationship(
         "ContractStatusHistory",

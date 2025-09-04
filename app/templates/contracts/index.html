@@ -30,6 +30,7 @@
 ] %}
 {% set show_client_filter = true %}
 {% set show_contract_type_filter = true %}
+{% set show_docusign_filter = true %}
 {% set clients = clients|default([]) %}
 {% set search_results_summary = 'Showing ' + contracts.total|string + ' of ' + contracts.total|string + ' contracts' if contracts and contracts.items else '' %}
 
@@ -64,6 +65,7 @@
                                     <th>Client</th>
                                     <th>Type</th>
                                     <th>Status</th>
+                                    <th>DocuSign</th>
                                     <th>Value</th>
                                     <th>Created</th>
                                     <th>Expires</th>
@@ -94,6 +96,18 @@
                                         <span class="badge bg-{{ 'success' if contract.status == 'active' else 'primary' if contract.status in ['draft', 'under_review'] else 'danger' if contract.status in ['expired', 'terminated'] else 'secondary' }}">
                                             {{ contract.status|title }}
                                         </span>
+                                    </td>
+                                    <td>
+                                        {% if contract.docusign_envelope_id %}
+                                            <span class="badge" style="background-color: {{ 'var(--success-color)' if contract.docusign_status == 'completed' else '#fbbf24' if contract.docusign_status == 'delivered' else 'var(--primary-color)' if contract.docusign_status == 'sent' else 'var(--danger-color)' if contract.docusign_status == 'declined' else 'var(--secondary-color)' }}; color: white; font-size: 0.75rem;" title="DocuSign Status: {{ contract.docusign_status|title }}">
+                                                <i class="bi {{ 'bi-check-circle-fill' if contract.docusign_status == 'completed' else 'bi-envelope-open' if contract.docusign_status == 'delivered' else 'bi-send' if contract.docusign_status == 'sent' else 'bi-x-circle-fill' if contract.docusign_status == 'declined' else 'bi-slash-circle' }} me-1"></i>
+                                                {{ contract.docusign_status|title }}
+                                            </span>
+                                        {% else %}
+                                            <span class="badge" style="background-color: var(--bg-tertiary); color: var(--text-muted); border: 1px solid var(--border-color); font-size: 0.75rem;" title="Not sent for signature">
+                                                <i class="bi bi-circle me-1"></i>—
+                                            </span>
+                                        {% endif %}
                                     </td>
                                     <td>
                                         {% if contract.contract_value %}

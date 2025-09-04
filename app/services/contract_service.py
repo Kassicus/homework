@@ -222,6 +222,15 @@ class ContractService:
                         Contract.contract_type == filters["contract_type"]
                     )
 
+                if filters.get("docusign_status"):
+                    docusign_status = filters["docusign_status"]
+                    if docusign_status == "not_sent":
+                        # Contracts that haven't been sent for signature
+                        query = query.filter(Contract.docusign_envelope_id.is_(None))
+                    else:
+                        # Contracts with specific DocuSign status
+                        query = query.filter(Contract.docusign_status == docusign_status)
+
                 if filters.get("date_from"):
                     query = query.filter(Contract.created_date >= filters["date_from"])
 

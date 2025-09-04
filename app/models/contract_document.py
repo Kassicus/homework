@@ -31,7 +31,7 @@ class ContractDocument(db.Model):
     is_primary = db.Column(db.Boolean, default=False, nullable=False)  # Mark primary document
 
     # Relationships
-    contract = db.relationship("Contract", back_populates="documents")
+    contract = db.relationship("Contract", back_populates="documents", foreign_keys=[contract_id])
     uploader = db.relationship("User", lazy="joined")
 
     def __repr__(self):

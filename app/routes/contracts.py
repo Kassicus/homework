@@ -26,11 +26,14 @@ from app.models.client import Client
 from app.models.contract import Contract
 from app.models.contract_document import ContractDocument
 from app.services.contract_service import ContractService
+from app.services.docusign_service import docusign_service
 from app.services.document_service import DocumentService
 from app.services.file_service import FileService
 from app.utils.activity_decorators import (
     log_view, log_create, log_update, log_delete, log_restore,
-    get_contract_info
+    log_docusign_send, log_docusign_check, log_docusign_void,
+    log_document_upload, log_document_delete, log_document_download, log_document_set_primary,
+    get_contract_info, get_docusign_info, get_document_info
 )
 from app.models.activity_log import ActivityLog
 
@@ -47,6 +50,7 @@ def index():
     status_filter = request.args.get("status", "")
     client_filter = request.args.get("client", "")
     contract_type_filter = request.args.get("contract_type", "")
+    docusign_status_filter = request.args.get("docusign_status", "")
     date_from = request.args.get("date_from", "")
     date_to = request.args.get("date_to", "")
     expiring_soon = request.args.get("expiring_soon", "")
@@ -55,9 +59,9 @@ def index():
 
     try:
         # Debug logging
-        logger.info(f"Contract search params - q: '{search_term}', status: '{status_filter}', client: '{client_filter}', type: '{contract_type_filter}', date_from: '{date_from}', date_to: '{date_to}', expiring_soon: '{expiring_soon}'")
+        logger.info(f"Contract search params - q: '{search_term}', status: '{status_filter}', client: '{client_filter}', type: '{contract_type_filter}', docusign: '{docusign_status_filter}', date_from: '{date_from}', date_to: '{date_to}', expiring_soon: '{expiring_soon}'")
         
-        if search_term or status_filter or client_filter or contract_type_filter or date_from or date_to or expiring_soon:
+        if search_term or status_filter or client_filter or contract_type_filter or docusign_status_filter or date_from or date_to or expiring_soon:
             # Build filters for search
             filters = {}
             if status_filter:
@@ -400,6 +404,7 @@ def update_status(contract_id):
 
 @contracts_bp.route("/<int:contract_id>/documents/upload", methods=["GET", "POST"])
 @login_required
+@log_document_upload(get_document_info)
 def upload_document(contract_id):
     """Upload document to existing contract (supports multiple documents)"""
     from app.forms.contract_forms import DocumentUploadForm
@@ -461,6 +466,7 @@ def upload_document(contract_id):
 
 @contracts_bp.route("/<int:contract_id>/documents/<int:document_id>/delete", methods=["POST"])
 @login_required
+@log_document_delete(get_document_info)
 def delete_document(contract_id, document_id):
     """Delete a specific document from a contract"""
     try:
@@ -493,6 +499,7 @@ def delete_document(contract_id, document_id):
 
 @contracts_bp.route("/<int:contract_id>/documents/<int:document_id>/set-primary", methods=["POST"])
 @login_required
+@log_document_set_primary(get_document_info)
 def set_primary_document(contract_id, document_id):
     """Set a document as the primary document for a contract"""
     try:
@@ -515,6 +522,7 @@ def set_primary_document(contract_id, document_id):
 
 @contracts_bp.route("/<int:contract_id>/documents/<int:document_id>/download")
 @login_required
+@log_document_download(get_document_info)
 def download_document(contract_id, document_id):
     """Download a specific document"""
     try:
@@ -661,15 +669,16 @@ def export_contracts():
         status_filter = request.form.get("status", "") or request.args.get("status", "")
         client_filter = request.form.get("client", "") or request.args.get("client", "")
         contract_type_filter = request.form.get("contract_type", "") or request.args.get("contract_type", "")
+        docusign_status_filter = request.form.get("docusign_status", "") or request.args.get("docusign_status", "")
         date_from = request.form.get("date_from", "") or request.args.get("date_from", "")
         date_to = request.form.get("date_to", "") or request.args.get("date_to", "")
         expiring_soon = request.form.get("expiring_soon", "") or request.args.get("expiring_soon", "")
         export_format = request.form.get("export_format", "csv")
         
-        logger.info(f"Exporting contracts - format: {export_format}, filters: q='{search_term}', status='{status_filter}', client='{client_filter}', type='{contract_type_filter}'")
+        logger.info(f"Exporting contracts - format: {export_format}, filters: q='{search_term}', status='{status_filter}', client='{client_filter}', type='{contract_type_filter}', docusign='{docusign_status_filter}'")
         
         # Build filters for export (same logic as search)
-        if search_term or status_filter or client_filter or contract_type_filter or date_from or date_to or expiring_soon:
+        if search_term or status_filter or client_filter or contract_type_filter or docusign_status_filter or date_from or date_to or expiring_soon:
             filters = {}
             if status_filter:
                 filters["status"] = status_filter
@@ -735,6 +744,7 @@ def export_contracts_csv(contracts):
                 contract.client.name if contract.client else '',
                 contract.contract_type or '',
                 contract.status,
+                contract.docusign_status or 'Not Sent',
                 float(contract.contract_value) if contract.contract_value else '',
                 contract.created_date.strftime('%Y-%m-%d') if contract.created_date else '',
                 contract.effective_date.strftime('%Y-%m-%d') if contract.effective_date else '',
@@ -774,7 +784,7 @@ def export_contracts_excel(contracts):
         # Define headers
         headers = [
             'ID', 'Title', 'Description', 'Client', 'Contract Type', 
-            'Status', 'Contract Value', 'Created Date', 'Effective Date', 
+            'Status', 'DocuSign Status', 'Contract Value', 'Created Date', 'Effective Date', 
             'Expiration Date', 'Renewal Date', 'Created By', 'File Name'
         ]
         
@@ -799,6 +809,7 @@ def export_contracts_excel(contracts):
                 contract.client.name if contract.client else '',
                 contract.contract_type or '',
                 contract.status,
+                contract.docusign_status or 'Not Sent',
                 float(contract.contract_value) if contract.contract_value else '',
                 contract.created_date.strftime('%Y-%m-%d') if contract.created_date else '',
                 contract.effective_date.strftime('%Y-%m-%d') if contract.effective_date else '',
@@ -888,7 +899,7 @@ def export_contracts_pdf(contracts):
         if contracts:
             # Prepare table data
             table_data = [
-                ['ID', 'Title', 'Client', 'Type', 'Status', 'Value', 'Effective Date', 'Expiration Date']
+                ['ID', 'Title', 'Client', 'Type', 'Status', 'DocuSign', 'Value', 'Effective', 'Expires']
             ]
             
             for contract in contracts:
@@ -898,6 +909,7 @@ def export_contracts_pdf(contracts):
                     (contract.client.name[:20] + ('...' if len(contract.client.name) > 20 else '')) if contract.client else 'N/A',
                     contract.contract_type[:15] + ('...' if len(contract.contract_type or '') > 15 else '') if contract.contract_type else 'N/A',
                     contract.status,
+                    contract.docusign_status[:10] + ('...' if len(contract.docusign_status or '') > 10 else '') if contract.docusign_status else 'Not Sent',
                     f'${contract.contract_value:,.2f}' if contract.contract_value else 'N/A',
                     contract.effective_date.strftime('%Y-%m-%d') if contract.effective_date else 'N/A',
                     contract.expiration_date.strftime('%Y-%m-%d') if contract.expiration_date else 'N/A'
@@ -905,7 +917,7 @@ def export_contracts_pdf(contracts):
                 table_data.append(row)
             
             # Create table
-            table = Table(table_data, colWidths=[0.6*inch, 1.8*inch, 1.2*inch, 1*inch, 0.8*inch, 1*inch, 1*inch, 1*inch])
+            table = Table(table_data, colWidths=[0.5*inch, 1.4*inch, 1*inch, 0.8*inch, 0.7*inch, 0.8*inch, 0.8*inch, 0.8*inch, 0.8*inch])
             
             # Apply table style
             table.setStyle(TableStyle([
@@ -1010,3 +1022,174 @@ def api_search():
     except Exception as e:
         logger.error(f"Error in API search: {e}")
         return jsonify({"error": "Search failed"}), 500
+
+
+@contracts_bp.route("/<int:contract_id>/send_for_signature", methods=["POST"])
+@login_required
+@log_docusign_send(get_docusign_info)
+def send_for_signature(contract_id):
+    """Send contract to client via DocuSign (Mock Implementation)"""
+    try:
+        contract = Contract.query.get_or_404(contract_id)
+        
+        # Check if contract has documents
+        if not contract.documents.first() and not contract.file_path:
+            flash("Cannot send contract without documents. Please upload a document first.", "error")
+            return redirect(url_for("contracts.show", contract_id=contract_id))
+        
+        # Get recipient details and document selection from form
+        recipient_email = request.form.get('recipient_email', '').strip()
+        recipient_name = request.form.get('recipient_name', '').strip()
+        document_id = request.form.get('document_id', '').strip()
+        
+        # Validate email
+        if not recipient_email:
+            flash("Recipient email is required.", "error")
+            return redirect(url_for("contracts.show", contract_id=contract_id))
+        
+        # Validate document selection
+        if not document_id:
+            flash("Please select a document to send for signature.", "error")
+            return redirect(url_for("contracts.show", contract_id=contract_id))
+        
+        # Verify selected document belongs to this contract
+        from app.models.contract_document import ContractDocument
+        selected_document = ContractDocument.query.filter_by(
+            id=document_id, 
+            contract_id=contract_id
+        ).first()
+        
+        if not selected_document:
+            flash("Invalid document selection.", "error")
+            return redirect(url_for("contracts.show", contract_id=contract_id))
+        
+        # Default recipient name to client name if not provided
+        if not recipient_name and contract.client:
+            recipient_name = contract.client.name
+        
+        # Send to DocuSign (mock)
+        result = docusign_service.send_contract_for_signature(
+            contract_id, recipient_email, recipient_name, document_id
+        )
+        
+        if result['success']:
+            flash(f"✅ Contract sent to {recipient_email} for signature! (Mock Mode)", "success")
+            logger.info(f"Contract {contract_id} sent for signature to {recipient_email}")
+        else:
+            flash(f"❌ Error sending contract: {result['error']}", "error")
+            logger.error(f"Failed to send contract {contract_id}: {result['error']}")
+            
+        return redirect(url_for("contracts.show", contract_id=contract_id))
+        
+    except Exception as e:
+        logger.error(f"Error sending contract for signature: {e}")
+        flash("An error occurred while sending the contract.", "error")
+        return redirect(url_for("contracts.show", contract_id=contract_id))
+
+
+@contracts_bp.route("/<int:contract_id>/docusign_status", methods=["GET"])
+@login_required
+@log_docusign_check(get_docusign_info)
+def check_docusign_status(contract_id):
+    """Check DocuSign status for a contract (Mock Implementation)"""
+    try:
+        contract = Contract.query.get_or_404(contract_id)
+        
+        if not contract.docusign_envelope_id:
+            return jsonify({
+                'success': False,
+                'error': 'No DocuSign envelope found for this contract'
+            }), 404
+        
+        # Check status (mock)
+        result = docusign_service.check_envelope_status(
+            contract.docusign_envelope_id, contract_id
+        )
+        
+        return jsonify(result)
+        
+    except Exception as e:
+        logger.error(f"Error checking DocuSign status: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
+@contracts_bp.route("/<int:contract_id>/void_docusign", methods=["POST"])
+@login_required
+@log_docusign_void(get_docusign_info)
+def void_docusign_envelope(contract_id):
+    """Void a DocuSign envelope (Mock Implementation)"""
+    try:
+        contract = Contract.query.get_or_404(contract_id)
+        
+        if not contract.docusign_envelope_id:
+            flash("No DocuSign envelope found to void.", "error")
+            return redirect(url_for("contracts.show", contract_id=contract_id))
+        
+        if contract.docusign_status == 'completed':
+            flash("Cannot void a completed envelope.", "error")
+            return redirect(url_for("contracts.show", contract_id=contract_id))
+        
+        # Store old status for logging
+        old_status = contract.docusign_status
+        envelope_id = contract.docusign_envelope_id
+        
+        # Mock voiding
+        contract.docusign_status = 'voided'
+        db.session.commit()
+        
+        # Log additional details about the void operation
+        try:
+            from app.services.activity_service import log_user_activity
+            log_user_activity(
+                action=ActivityLog.ACTION_DOCUSIGN_STATUS_CHANGE,
+                resource_type=ActivityLog.RESOURCE_CONTRACT,
+                resource_id=contract_id,
+                resource_title=f"{contract.title} (Envelope: {envelope_id[:8]}...)",
+                success=True,
+                additional_data={
+                    'old_status': old_status,
+                    'new_status': 'voided',
+                    'envelope_id': envelope_id,
+                    'action_type': 'manual_void',
+                    'mock_service': True
+                }
+            )
+        except Exception as log_error:
+            logger.warning(f"Failed to log DocuSign void activity: {log_error}")
+        
+        flash("✅ DocuSign envelope has been voided. (Mock Mode)", "success")
+        logger.info(f"DocuSign envelope voided for contract {contract_id}")
+        
+        return redirect(url_for("contracts.show", contract_id=contract_id))
+        
+    except Exception as e:
+        logger.error(f"Error voiding DocuSign envelope: {e}")
+        flash("An error occurred while voiding the envelope.", "error")
+        return redirect(url_for("contracts.show", contract_id=contract_id))
+
+
+@contracts_bp.route("/admin/populate_docusign_demo", methods=["POST"])
+@login_required
+def populate_docusign_demo_data():
+    """Populate existing contracts with mock DocuSign data for demo purposes"""
+    try:
+        if not current_user.is_admin:
+            flash("Access denied. Admin privileges required.", "error")
+            return redirect(url_for("contracts.index"))
+        
+        result = docusign_service.populate_existing_contracts_with_mock_data()
+        
+        if result['success']:
+            flash(f"✅ Demo data populated: {result['message']}", "success")
+        else:
+            flash(f"❌ Error populating demo data: {result['error']}", "error")
+            
+        return redirect(url_for("contracts.index"))
+        
+    except Exception as e:
+        logger.error(f"Error populating DocuSign demo data: {e}")
+        flash("An error occurred while populating demo data.", "error")
+        return redirect(url_for("contracts.index"))

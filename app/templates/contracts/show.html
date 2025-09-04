@@ -219,6 +219,82 @@ document.addEventListener('DOMContentLoaded', function() {
     {% endif %}
     {% endfor %}
 });
+
+// DocuSign Status Check Function
+function checkDocuSignStatus(contractId) {
+    const button = event.target;
+    const originalText = button.innerHTML;
+    
+    // Show loading state
+    button.innerHTML = '<i class="bi bi-arrow-clockwise me-1 spin"></i>Checking...';
+    button.disabled = true;
+    
+    fetch(`/contracts/${contractId}/docusign_status`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Show success message
+                if (window.toastManager) {
+                    window.toastManager.show(
+                        `Status: ${data.status} - ${data.message}`, 
+                        data.status === 'completed' ? 'success' : 'info',
+                        'DocuSign Update'
+                    );
+                }
+                
+                // Reload page to show updated status
+                setTimeout(() => {
+                    window.location.reload();
+                }, 1500);
+            } else {
+                if (window.toastManager) {
+                    window.toastManager.show(data.error, 'error', 'DocuSign Error');
+                }
+            }
+        })
+        .catch(error => {
+            console.error('Error checking DocuSign status:', error);
+            if (window.toastManager) {
+                window.toastManager.show('Failed to check status', 'error', 'DocuSign Error');
+            }
+        })
+        .finally(() => {
+            // Restore button state
+            button.innerHTML = originalText;
+            button.disabled = false;
+        });
+}
+
+// Document Selector Enhancement
+function updateDocumentSelector() {
+    const documentSelect = document.getElementById('document_id');
+    if (!documentSelect) return;
+    
+    const selectedOption = documentSelect.options[documentSelect.selectedIndex];
+    const submitButton = document.querySelector('.btn-docusign-primary');
+    
+    // Update button text based on selected document
+    if (selectedOption && submitButton) {
+        const documentName = selectedOption.text.split(' - ')[0]; // Get just the filename
+        const sendIcon = submitButton.querySelector('.bi-send');
+        if (sendIcon) {
+            // Update button text
+            const truncatedName = documentName.length > 25 ? documentName.substring(0, 25) + '...' : documentName;
+            submitButton.innerHTML = `<i class="bi bi-send me-2"></i>Send "${truncatedName}" for Signature`;
+        }
+    }
+}
+
+// Initialize document selector on page load
+document.addEventListener('DOMContentLoaded', function() {
+    const documentSelect = document.getElementById('document_id');
+    if (documentSelect) {
+        // Set up change listener
+        documentSelect.addEventListener('change', updateDocumentSelector);
+        // Initialize on page load
+        updateDocumentSelector();
+    }
+});
 </script>
 {% endblock %}
 
@@ -374,6 +450,186 @@ document.addEventListener('DOMContentLoaded', function() {
                         <i class="bi bi-person-x text-muted" style="font-size: 3rem;"></i>
                         <h6 class="text-muted mt-3">No Client Assigned</h6>
                         <p class="text-muted">This contract is not currently associated with any client.</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- DocuSign Integration Section -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card shadow">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h6 class="m-0 font-weight-bold text-primary">
+                    <i class="bi bi-file-earmark-text me-2"></i>Electronic Signature (DocuSign)
+                </h6>
+                {% if contract.docusign_envelope_id %}
+                    <span class="badge docusign-status" style="background-color: {{ 'var(--success-color)' if contract.docusign_status == 'completed' else '#fbbf24' if contract.docusign_status == 'delivered' else 'var(--primary-color)' if contract.docusign_status == 'sent' else 'var(--danger-color)' if contract.docusign_status == 'declined' else 'var(--secondary-color)' }}; color: white;">
+                        <i class="bi {{ 'bi-check-circle-fill' if contract.docusign_status == 'completed' else 'bi-envelope-open' if contract.docusign_status == 'delivered' else 'bi-send' if contract.docusign_status == 'sent' else 'bi-x-circle-fill' if contract.docusign_status == 'declined' else 'bi-slash-circle' }} me-1"></i>
+                        {{ contract.docusign_status|title }}
+                    </span>
+                {% else %}
+                    <span class="badge docusign-status" style="background-color: var(--bg-tertiary); color: var(--text-muted); border: 1px solid var(--border-color);">
+                        <i class="bi bi-circle me-1"></i>Not Sent
+                    </span>
+                {% endif %}
+            </div>
+            <div class="card-body">
+                {% if contract.docusign_envelope_id %}
+                    <!-- DocuSign Status Information -->
+                    <div class="row">
+                        <div class="col-md-8">
+                            <div class="docusign-info">
+                                <div class="d-flex align-items-center mb-3">
+                                    <div class="me-3">
+                                        <i class="bi bi-envelope-paper text-primary" style="font-size: 2rem;"></i>
+                                    </div>
+                                    <div>
+                                        <h6 class="mb-1">Envelope ID: {{ contract.docusign_envelope_id }}</h6>
+                                        {% if contract.docusign_document %}
+                                            <p class="mb-1"><strong>Document:</strong> {{ contract.docusign_document.original_filename }} 
+                                               <small class="text-muted">({{ contract.docusign_document.get_file_size_human() }})</small>
+                                            </p>
+                                        {% endif %}
+                                        <p class="text-muted mb-0">
+                                            {% if contract.docusign_status == 'completed' %}
+                                                ✅ Contract has been signed and completed
+                                            {% elif contract.docusign_status == 'delivered' %}
+                                                📧 Recipient has received the document
+                                            {% elif contract.docusign_status == 'sent' %}
+                                                📤 Document has been sent for signature
+                                            {% elif contract.docusign_status == 'declined' %}
+                                                ❌ Recipient has declined to sign
+                                            {% elif contract.docusign_status == 'voided' %}
+                                                🚫 Document has been voided
+                                            {% endif %}
+                                        </p>
+                                    </div>
+                                </div>
+                                
+                                <div class="row g-3">
+                                    <div class="col-md-6">
+                                        <strong>Recipient:</strong><br>
+                                        <span class="text-muted">{{ contract.docusign_recipient_name or 'N/A' }}</span><br>
+                                        <small class="text-muted">{{ contract.docusign_recipient_email or 'N/A' }}</small>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <strong>Timeline:</strong><br>
+                                        {% if contract.docusign_sent_date %}
+                                            <small class="text-muted">Sent: {{ contract.docusign_sent_date.strftime('%B %d, %Y at %I:%M %p') }}</small><br>
+                                        {% endif %}
+                                        {% if contract.docusign_completed_date %}
+                                            <small class="text-muted">Completed: {{ contract.docusign_completed_date.strftime('%B %d, %Y at %I:%M %p') }}</small>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="d-grid gap-2">
+                                <button type="button" class="btn btn-outline-primary btn-sm" onclick="checkDocuSignStatus({{ contract.id }})">
+                                    <i class="bi bi-arrow-clockwise me-1"></i>Check Status
+                                </button>
+                                {% if contract.docusign_status not in ['completed', 'voided'] %}
+                                    <form method="POST" action="{{ url_for('contracts.void_docusign_envelope', contract_id=contract.id) }}" style="display: inline;">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                                        <button type="submit" class="btn btn-outline-danger btn-sm w-100" 
+                                                onclick="return confirm('Are you sure you want to void this DocuSign envelope?')">
+                                            <i class="bi bi-x-circle me-1"></i>Void Envelope
+                                        </button>
+                                    </form>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                {% else %}
+                    <!-- Send for Signature Form -->
+                    <div class="row">
+                        <div class="col-md-8">
+                            <div class="alert alert-info docusign-alert">
+                                <i class="bi bi-info-circle me-2"></i>
+                                <strong>Ready to Send for Signature</strong><br>
+                                Send this contract to your client for electronic signature using DocuSign.
+                                <small class="d-block mt-1">(Demo Mode - No actual DocuSign account required)</small>
+                            </div>
+                            
+                            <form method="POST" action="{{ url_for('contracts.send_for_signature', contract_id=contract.id) }}" class="docusign-form">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                                <div class="row g-3">
+                                    <div class="col-12">
+                                        <label for="document_id" class="form-label">
+                                            <i class="bi bi-file-earmark-text me-1"></i>Document to Send *
+                                        </label>
+                                        <select class="form-select" id="document_id" name="document_id" required>
+                                            {% set primary_doc = contract.get_primary_document() %}
+                                            {% for doc in contract.documents.all() %}
+                                                <option value="{{ doc.id }}" 
+                                                        {{ 'selected' if doc.is_primary else '' }}
+                                                        data-size="{{ doc.get_file_size_human() }}"
+                                                        data-type="{{ doc.document_type }}">
+                                                    {{ doc.original_filename }}
+                                                    {% if doc.is_primary %} (Primary){% endif %}
+                                                    - {{ doc.get_file_size_human() }}
+                                                    {% if doc.document_type != 'contract' %} - {{ doc.document_type|title }}{% endif %}
+                                                </option>
+                                            {% endfor %}
+                                        </select>
+                                        <div class="form-text">
+                                            <i class="bi bi-info-circle me-1"></i>Select which document will be sent for electronic signature
+                                            {% if contract.documents.count() == 0 %}
+                                                <span class="text-warning ms-2">
+                                                    <i class="bi bi-exclamation-triangle me-1"></i>No documents available - please upload a document first
+                                                </span>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label for="recipient_email" class="form-label">
+                                            <i class="bi bi-envelope me-1"></i>Recipient Email *
+                                        </label>
+                                        <input type="email" class="form-control" name="recipient_email" 
+                                               value="{{ contract.client.email if contract.client and contract.client.email else '' }}" 
+                                               placeholder="client@example.com" required>
+                                        <div class="form-text">Email address where the signature request will be sent</div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label for="recipient_name" class="form-label">
+                                            <i class="bi bi-person me-1"></i>Recipient Name
+                                        </label>
+                                        <input type="text" class="form-control" name="recipient_name" 
+                                               value="{{ contract.client.name if contract.client else '' }}"
+                                               placeholder="Client Name">
+                                        <div class="form-text">Name that will appear on the signature request</div>
+                                    </div>
+                                </div>
+                                <div class="mt-4">
+                                    <button type="submit" class="btn btn-docusign-primary btn-lg" 
+                                            {% if contract.documents.count() == 0 %}disabled{% endif %}>
+                                        <i class="bi bi-send me-2"></i>Send for Signature
+                                    </button>
+                                    <small class="ms-3">
+                                        <i class="bi bi-shield-check me-1"></i>Secure electronic signature via DocuSign
+                                    </small>
+                                </div>
+                            </form>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card docusign-howto">
+                                <div class="card-body">
+                                    <h6 class="card-title">
+                                        <i class="bi bi-lightbulb me-1"></i>How it works
+                                    </h6>
+                                    <ul class="list-unstyled small">
+                                        <li><i class="bi bi-1-circle me-1"></i>Client receives email with signature link</li>
+                                        <li><i class="bi bi-2-circle me-1"></i>Client signs document electronically</li>
+                                        <li><i class="bi bi-3-circle me-1"></i>Signed document is automatically saved</li>
+                                        <li><i class="bi bi-4-circle me-1"></i>Contract status updates to "Active"</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 {% endif %}
             </div>
@@ -811,6 +1067,136 @@ document.addEventListener('DOMContentLoaded', function() {
 
 .modal-body .text-muted {
     color: #a0aec0 !important;
+}
+
+/* DocuSign Status Check Animation */
+.spin {
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* DocuSign Panel Dark Theme Styling */
+.docusign-info {
+    color: var(--text-primary) !important;
+}
+
+.docusign-info h6 {
+    color: var(--text-primary) !important;
+}
+
+.docusign-info p {
+    color: var(--text-secondary) !important;
+}
+
+.docusign-info .text-muted {
+    color: var(--text-muted) !important;
+}
+
+.docusign-info strong {
+    color: var(--text-primary) !important;
+}
+
+.docusign-info small {
+    color: var(--text-muted) !important;
+}
+
+/* DocuSign Form Styling */
+.docusign-form .form-label {
+    color: var(--text-primary) !important;
+    font-weight: 500;
+}
+
+.docusign-form .form-control {
+    background-color: var(--bg-tertiary) !important;
+    border-color: var(--border-color) !important;
+    color: var(--text-primary) !important;
+}
+
+.docusign-form .form-control:focus {
+    background-color: var(--bg-tertiary) !important;
+    border-color: var(--primary-color) !important;
+    color: var(--text-primary) !important;
+    box-shadow: 0 0 0 0.2rem rgba(113, 169, 247, 0.25) !important;
+}
+
+.docusign-form .form-control::placeholder {
+    color: var(--text-muted) !important;
+}
+
+.docusign-form .form-text {
+    color: var(--text-muted) !important;
+}
+
+/* DocuSign Alert Styling */
+.alert-info.docusign-alert {
+    background-color: rgba(113, 169, 247, 0.1) !important;
+    border-color: var(--primary-color) !important;
+    color: var(--text-primary) !important;
+}
+
+.alert-info.docusign-alert strong {
+    color: var(--primary-color) !important;
+}
+
+.alert-info.docusign-alert small {
+    color: var(--text-muted) !important;
+}
+
+/* DocuSign How-it-works Card */
+.docusign-howto {
+    background-color: var(--bg-tertiary) !important;
+    border-color: var(--border-color) !important;
+}
+
+.docusign-howto .card-body {
+    background-color: var(--bg-tertiary) !important;
+}
+
+.docusign-howto .card-title {
+    color: var(--text-primary) !important;
+}
+
+.docusign-howto .list-unstyled li {
+    color: var(--text-secondary) !important;
+}
+
+.docusign-howto .bi {
+    color: var(--primary-color) !important;
+}
+
+/* DocuSign Status Badges */
+.badge.docusign-status {
+    font-size: 0.875rem;
+    padding: 0.5rem 0.75rem;
+}
+
+/* DocuSign Button Styling */
+.btn-docusign-primary {
+    background-color: var(--primary-color) !important;
+    border-color: var(--primary-color) !important;
+    color: white !important;
+}
+
+.btn-docusign-primary:hover {
+    background-color: rgba(113, 169, 247, 0.8) !important;
+    border-color: rgba(113, 169, 247, 0.8) !important;
+}
+
+/* DocuSign Icon Colors */
+.docusign-info .bi-envelope-paper {
+    color: var(--primary-color) !important;
+}
+
+.docusign-info .bi-lightbulb {
+    color: #fbbf24 !important;
+}
+
+.docusign-info .bi-shield-check {
+    color: var(--success-color) !important;
 }
 </style>
 {% endblock %}
