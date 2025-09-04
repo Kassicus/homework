@@ -1,6 +1,8 @@
 """
 Contract routes for Contract Management Platform
 """
+import csv
+import io
 import logging
 import os
 from datetime import datetime
@@ -10,9 +12,11 @@ from flask import (
     current_app,
     flash,
     jsonify,
+    make_response,
     redirect,
     render_template,
     request,
+    send_file,
     url_for,
 )
 from flask_login import current_user, login_required
@@ -81,6 +85,9 @@ def index():
 
         # Get clients for filter dropdown
         clients = Client.query.all()
+        
+        # Get contract types for filter dropdown
+        contract_types = ContractService.get_contract_type_choices_for_search()
 
         return render_template(
             "contracts/index.html",
@@ -88,6 +95,7 @@ def index():
             search_term=search_term,
             filters=request.args,
             clients=clients,
+            contract_types=contract_types,
         )
 
     except Exception as e:
@@ -159,6 +167,9 @@ def new():
     form.client_id.choices = [(0, "Select a client...")] + [
         (c.id, c.name) for c in clients
     ]
+    
+    # Set contract type choices dynamically
+    form.contract_type.choices = ContractService.get_contract_type_choices_for_forms()
 
     # Set default values for other select fields
     if not form.contract_type.data:
@@ -173,12 +184,26 @@ def new():
             return render_template("contracts/new.html", form=form, clients=clients)
 
         try:
+            # Handle custom contract type
+            contract_type = form.contract_type.data
+            if contract_type == "custom" and form.custom_contract_type.data:
+                contract_type = form.custom_contract_type.data.strip()
+                # Validate and potentially create the new type
+                if ContractService.create_contract_type_if_not_exists(contract_type):
+                    logger.info(f"Using custom contract type: {contract_type}")
+                else:
+                    flash("Invalid custom contract type.", "error")
+                    return render_template("contracts/new.html", form=form, clients=clients)
+            elif contract_type == "custom":
+                flash("Please enter a custom contract type or select an existing one.", "error")
+                return render_template("contracts/new.html", form=form, clients=clients)
+
             # Get form data
             contract_data = {
                 "title": form.title.data,
                 "description": form.description.data,
                 "client_id": form.client_id.data,
-                "contract_type": form.contract_type.data,
+                "contract_type": contract_type,
                 "status": form.status.data,
                 "contract_value": form.contract_value.data,
                 "effective_date": form.effective_date.data,
@@ -232,6 +257,9 @@ def edit(contract_id):
         form.client_id.choices = [(0, "Select a client...")] + [
             (c.id, c.name) for c in clients
         ]
+        
+        # Set contract type choices dynamically
+        form.contract_type.choices = ContractService.get_contract_type_choices_for_forms()
 
         # Set default values for other select fields if they're None
         if not form.contract_type.data:
@@ -247,12 +275,30 @@ def edit(contract_id):
                     "contracts/edit.html", contract=contract, form=form, clients=clients
                 )
 
+            # Handle custom contract type
+            contract_type = form.contract_type.data
+            if contract_type == "custom" and form.custom_contract_type.data:
+                contract_type = form.custom_contract_type.data.strip()
+                # Validate and potentially create the new type
+                if ContractService.create_contract_type_if_not_exists(contract_type):
+                    logger.info(f"Using custom contract type: {contract_type}")
+                else:
+                    flash("Invalid custom contract type.", "error")
+                    return render_template(
+                        "contracts/edit.html", contract=contract, form=form, clients=clients
+                    )
+            elif contract_type == "custom":
+                flash("Please enter a custom contract type or select an existing one.", "error")
+                return render_template(
+                    "contracts/edit.html", contract=contract, form=form, clients=clients
+                )
+
             # Get form data
             update_data = {
                 "title": form.title.data,
                 "description": form.description.data,
                 "client_id": form.client_id.data,
-                "contract_type": form.contract_type.data,
+                "contract_type": contract_type,
                 "status": form.status.data,
                 "contract_value": form.contract_value.data,
                 "effective_date": form.effective_date.data,
@@ -603,6 +649,309 @@ def download(contract_id):
         logger.error(f"Error downloading contract {contract_id}: {e}")
         flash("An error occurred while downloading the contract.", "error")
         return redirect(url_for("contracts.show", contract_id=contract_id))
+
+
+@contracts_bp.route("/export", methods=["GET", "POST"])
+@login_required
+def export_contracts():
+    """Export contracts with current filters applied"""
+    try:
+        # Get filter parameters from request
+        search_term = request.form.get("q", "") or request.args.get("q", "")
+        status_filter = request.form.get("status", "") or request.args.get("status", "")
+        client_filter = request.form.get("client", "") or request.args.get("client", "")
+        contract_type_filter = request.form.get("contract_type", "") or request.args.get("contract_type", "")
+        date_from = request.form.get("date_from", "") or request.args.get("date_from", "")
+        date_to = request.form.get("date_to", "") or request.args.get("date_to", "")
+        expiring_soon = request.form.get("expiring_soon", "") or request.args.get("expiring_soon", "")
+        export_format = request.form.get("export_format", "csv")
+        
+        logger.info(f"Exporting contracts - format: {export_format}, filters: q='{search_term}', status='{status_filter}', client='{client_filter}', type='{contract_type_filter}'")
+        
+        # Build filters for export (same logic as search)
+        if search_term or status_filter or client_filter or contract_type_filter or date_from or date_to or expiring_soon:
+            filters = {}
+            if status_filter:
+                filters["status"] = status_filter
+            if client_filter:
+                filters["client_id"] = int(client_filter)
+            if contract_type_filter:
+                filters["contract_type"] = contract_type_filter
+            if date_from:
+                filters["date_from"] = date_from
+            if date_to:
+                filters["date_to"] = date_to
+            if expiring_soon:
+                filters["expiring_soon"] = int(expiring_soon)
+                
+            # Get filtered contracts (all pages, no pagination for export)
+            contracts_paginated = ContractService.search_contracts(
+                search_term=search_term, filters=filters, page=1, per_page=10000
+            )
+            contracts = contracts_paginated.items
+        else:
+            # Export all contracts if no filters
+            contracts_paginated = ContractService.get_all_contracts(
+                include_deleted=False, page=1, per_page=10000
+            )
+            contracts = contracts_paginated.items
+        
+        if export_format.lower() == "csv":
+            return export_contracts_csv(contracts)
+        elif export_format.lower() == "excel":
+            return export_contracts_excel(contracts)
+        elif export_format.lower() == "pdf":
+            return export_contracts_pdf(contracts)
+        else:
+            flash("Unsupported export format.", "error")
+            return redirect(url_for("contracts.index"))
+            
+    except Exception as e:
+        logger.error(f"Error exporting contracts: {e}")
+        flash("An error occurred while exporting contracts.", "error")
+        return redirect(url_for("contracts.index"))
+
+
+def export_contracts_csv(contracts):
+    """Export contracts to CSV format"""
+    try:
+        output = io.StringIO()
+        writer = csv.writer(output)
+        
+        # Write CSV headers
+        headers = [
+            'ID', 'Title', 'Description', 'Client', 'Contract Type', 
+            'Status', 'Contract Value', 'Created Date', 'Effective Date', 
+            'Expiration Date', 'Renewal Date', 'Created By', 'File Name'
+        ]
+        writer.writerow(headers)
+        
+        # Write contract data
+        for contract in contracts:
+            row = [
+                contract.id,
+                contract.title,
+                contract.description or '',
+                contract.client.name if contract.client else '',
+                contract.contract_type or '',
+                contract.status,
+                float(contract.contract_value) if contract.contract_value else '',
+                contract.created_date.strftime('%Y-%m-%d') if contract.created_date else '',
+                contract.effective_date.strftime('%Y-%m-%d') if contract.effective_date else '',
+                contract.expiration_date.strftime('%Y-%m-%d') if contract.expiration_date else '',
+                contract.renewal_date.strftime('%Y-%m-%d') if contract.renewal_date else '',
+                contract.creator.username if contract.creator else '',
+                contract.legacy_file_name or ''
+            ]
+            writer.writerow(row)
+        
+        # Create response
+        output.seek(0)
+        response = make_response(output.getvalue())
+        response.headers['Content-Type'] = 'text/csv'
+        response.headers['Content-Disposition'] = f'attachment; filename=contracts_export_{datetime.now().strftime("%Y%m%d_%H%M%S")}.csv'
+        
+        logger.info(f"Exported {len(contracts)} contracts to CSV")
+        return response
+        
+    except Exception as e:
+        logger.error(f"Error creating CSV export: {e}")
+        raise
+
+
+def export_contracts_excel(contracts):
+    """Export contracts to Excel format"""
+    try:
+        from openpyxl import Workbook
+        from openpyxl.styles import Font, PatternFill, Alignment
+        from openpyxl.utils import get_column_letter
+        
+        # Create workbook and worksheet
+        wb = Workbook()
+        ws = wb.active
+        ws.title = "Contracts Export"
+        
+        # Define headers
+        headers = [
+            'ID', 'Title', 'Description', 'Client', 'Contract Type', 
+            'Status', 'Contract Value', 'Created Date', 'Effective Date', 
+            'Expiration Date', 'Renewal Date', 'Created By', 'File Name'
+        ]
+        
+        # Style for headers
+        header_font = Font(bold=True, color="FFFFFF")
+        header_fill = PatternFill(start_color="4472C4", end_color="4472C4", fill_type="solid")
+        header_alignment = Alignment(horizontal="center", vertical="center")
+        
+        # Write and style headers
+        for col, header in enumerate(headers, 1):
+            cell = ws.cell(row=1, column=col, value=header)
+            cell.font = header_font
+            cell.fill = header_fill
+            cell.alignment = header_alignment
+        
+        # Write contract data
+        for row_num, contract in enumerate(contracts, 2):
+            data = [
+                contract.id,
+                contract.title,
+                contract.description or '',
+                contract.client.name if contract.client else '',
+                contract.contract_type or '',
+                contract.status,
+                float(contract.contract_value) if contract.contract_value else '',
+                contract.created_date.strftime('%Y-%m-%d') if contract.created_date else '',
+                contract.effective_date.strftime('%Y-%m-%d') if contract.effective_date else '',
+                contract.expiration_date.strftime('%Y-%m-%d') if contract.expiration_date else '',
+                contract.renewal_date.strftime('%Y-%m-%d') if contract.renewal_date else '',
+                contract.creator.username if contract.creator else '',
+                contract.legacy_file_name or ''
+            ]
+            
+            for col, value in enumerate(data, 1):
+                ws.cell(row=row_num, column=col, value=value)
+        
+        # Auto-adjust column widths
+        for col in range(1, len(headers) + 1):
+            column_letter = get_column_letter(col)
+            max_length = len(headers[col-1])
+            for row in range(2, len(contracts) + 2):
+                cell_value = str(ws.cell(row=row, column=col).value or '')
+                max_length = max(max_length, len(cell_value))
+            ws.column_dimensions[column_letter].width = min(max_length + 2, 50)
+        
+        # Save to BytesIO
+        output = io.BytesIO()
+        wb.save(output)
+        output.seek(0)
+        
+        # Create response
+        response = make_response(output.getvalue())
+        response.headers['Content-Type'] = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        response.headers['Content-Disposition'] = f'attachment; filename=contracts_export_{datetime.now().strftime("%Y%m%d_%H%M%S")}.xlsx'
+        
+        logger.info(f"Exported {len(contracts)} contracts to Excel")
+        return response
+        
+    except Exception as e:
+        logger.error(f"Error creating Excel export: {e}")
+        raise
+
+
+def export_contracts_pdf(contracts):
+    """Export contracts to PDF format"""
+    try:
+        from reportlab.lib import colors
+        from reportlab.lib.pagesizes import letter, A4
+        from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+        from reportlab.lib.units import inch
+        from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+        from reportlab.lib.enums import TA_CENTER, TA_LEFT
+        
+        # Create PDF buffer
+        buffer = io.BytesIO()
+        
+        # Create document
+        doc = SimpleDocTemplate(
+            buffer,
+            pagesize=A4,
+            rightMargin=72,
+            leftMargin=72,
+            topMargin=72,
+            bottomMargin=18
+        )
+        
+        # Get styles
+        styles = getSampleStyleSheet()
+        title_style = ParagraphStyle(
+            'CustomTitle',
+            parent=styles['Heading1'],
+            fontSize=18,
+            spaceAfter=30,
+            alignment=TA_CENTER,
+            textColor=colors.HexColor('#2c3e50')
+        )
+        
+        # Build content
+        content = []
+        
+        # Add title
+        title = Paragraph("Contracts Export Report", title_style)
+        content.append(title)
+        
+        # Add export info
+        export_info = f"Generated on: {datetime.now().strftime('%B %d, %Y at %I:%M %p')}<br/>Total Contracts: {len(contracts)}"
+        info_para = Paragraph(export_info, styles['Normal'])
+        content.append(info_para)
+        content.append(Spacer(1, 20))
+        
+        if contracts:
+            # Prepare table data
+            table_data = [
+                ['ID', 'Title', 'Client', 'Type', 'Status', 'Value', 'Effective Date', 'Expiration Date']
+            ]
+            
+            for contract in contracts:
+                row = [
+                    str(contract.id),
+                    contract.title[:30] + ('...' if len(contract.title) > 30 else ''),
+                    (contract.client.name[:20] + ('...' if len(contract.client.name) > 20 else '')) if contract.client else 'N/A',
+                    contract.contract_type[:15] + ('...' if len(contract.contract_type or '') > 15 else '') if contract.contract_type else 'N/A',
+                    contract.status,
+                    f'${contract.contract_value:,.2f}' if contract.contract_value else 'N/A',
+                    contract.effective_date.strftime('%Y-%m-%d') if contract.effective_date else 'N/A',
+                    contract.expiration_date.strftime('%Y-%m-%d') if contract.expiration_date else 'N/A'
+                ]
+                table_data.append(row)
+            
+            # Create table
+            table = Table(table_data, colWidths=[0.6*inch, 1.8*inch, 1.2*inch, 1*inch, 0.8*inch, 1*inch, 1*inch, 1*inch])
+            
+            # Apply table style
+            table.setStyle(TableStyle([
+                # Header row styling
+                ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#4472C4')),
+                ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                ('FONTSIZE', (0, 0), (-1, 0), 10),
+                ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+                
+                # Data rows styling
+                ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
+                ('FONTSIZE', (0, 1), (-1, -1), 8),
+                ('ALIGN', (0, 1), (-1, -1), 'LEFT'),
+                ('ALIGN', (4, 1), (4, -1), 'CENTER'),  # Status column center
+                ('ALIGN', (5, 1), (5, -1), 'RIGHT'),   # Value column right
+                
+                # Grid and borders
+                ('GRID', (0, 0), (-1, -1), 1, colors.black),
+                ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+                
+                # Alternating row colors
+                ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#f8f9fa')])
+            ]))
+            
+            content.append(table)
+        else:
+            no_data = Paragraph("No contracts found matching the current filters.", styles['Normal'])
+            content.append(no_data)
+        
+        # Build PDF
+        doc.build(content)
+        buffer.seek(0)
+        
+        # Create response
+        response = make_response(buffer.getvalue())
+        response.headers['Content-Type'] = 'application/pdf'
+        response.headers['Content-Disposition'] = f'attachment; filename=contracts_export_{datetime.now().strftime("%Y%m%d_%H%M%S")}.pdf'
+        
+        logger.info(f"Exported {len(contracts)} contracts to PDF")
+        return response
+        
+    except Exception as e:
+        logger.error(f"Error creating PDF export: {e}")
+        raise
 
 
 @contracts_bp.route("/deleted")

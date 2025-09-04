@@ -405,28 +405,61 @@ function getStatusBadgeClass(status) {
  * Export search results
  */
 function exportSearchResults(format) {
-    const form = $('#contract-search-form');
-    const formData = new FormData(form[0]);
+    // Get the search form (universal search component)
+    const searchForm = document.querySelector('.search-form');
+    
+    if (!searchForm) {
+        console.error('Search form not found');
+        return;
+    }
+    
+    const formData = new FormData(searchForm);
     formData.append('export_format', format);
     
     // Create temporary form for download
-    const tempForm = $('<form>', {
-        method: 'POST',
-        action: '/contracts/export',
-        target: '_blank'
-    });
+    const tempForm = document.createElement('form');
+    tempForm.method = 'POST';
+    tempForm.action = '/contracts/export';
+    tempForm.target = '_blank';
+    tempForm.style.display = 'none';
     
+    // Add all form data as hidden inputs
     for (let [key, value] of formData.entries()) {
-        tempForm.append($('<input>', {
-            type: 'hidden',
-            name: key,
-            value: value
-        }));
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = key;
+        input.value = value;
+        tempForm.appendChild(input);
     }
     
-    $('body').append(tempForm);
+    // Add CSRF token - try form first, then meta tag
+    let csrfValue = null;
+    const csrfTokenInput = searchForm.querySelector('input[name="csrf_token"]');
+    if (csrfTokenInput) {
+        csrfValue = csrfTokenInput.value;
+    } else {
+        const csrfTokenMeta = document.querySelector('meta[name="csrf-token"]');
+        if (csrfTokenMeta) {
+            csrfValue = csrfTokenMeta.getAttribute('content');
+        }
+    }
+    
+    if (csrfValue) {
+        const csrfInput = document.createElement('input');
+        csrfInput.type = 'hidden';
+        csrfInput.name = 'csrf_token';
+        csrfInput.value = csrfValue;
+        tempForm.appendChild(csrfInput);
+    }
+    
+    document.body.appendChild(tempForm);
     tempForm.submit();
-    tempForm.remove();
+    document.body.removeChild(tempForm);
+    
+    // Show success message
+    if (window.toastManager) {
+        window.toastManager.show(`Export started! Your ${format.toUpperCase()} file will download shortly.`, 'success', 'Export');
+    }
 }
 
 /**
@@ -466,9 +499,70 @@ function clearAdvancedSearch() {
 }
 
 /**
- * Export results function (placeholder)
+ * Export results function for universal search component
  */
 function exportResults() {
-    // This function can be implemented later for exporting filtered results
-    console.log('Export functionality not yet implemented');
+    // Default to CSV format for universal search export
+    exportSearchResults('csv');
+}
+
+/**
+ * Export client search results
+ */
+function exportClientResults(format) {
+    // Get the search form (universal search component)
+    const searchForm = document.querySelector('.search-form');
+    
+    if (!searchForm) {
+        console.error('Search form not found');
+        return;
+    }
+    
+    const formData = new FormData(searchForm);
+    formData.append('export_format', format);
+    
+    // Create temporary form for download
+    const tempForm = document.createElement('form');
+    tempForm.method = 'POST';
+    tempForm.action = '/clients/export';
+    tempForm.target = '_blank';
+    tempForm.style.display = 'none';
+    
+    // Add all form data as hidden inputs
+    for (let [key, value] of formData.entries()) {
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = key;
+        input.value = value;
+        tempForm.appendChild(input);
+    }
+    
+    // Add CSRF token - try form first, then meta tag
+    let csrfValue = null;
+    const csrfTokenInput = searchForm.querySelector('input[name="csrf_token"]');
+    if (csrfTokenInput) {
+        csrfValue = csrfTokenInput.value;
+    } else {
+        const csrfTokenMeta = document.querySelector('meta[name="csrf-token"]');
+        if (csrfTokenMeta) {
+            csrfValue = csrfTokenMeta.getAttribute('content');
+        }
+    }
+    
+    if (csrfValue) {
+        const csrfInput = document.createElement('input');
+        csrfInput.type = 'hidden';
+        csrfInput.name = 'csrf_token';
+        csrfInput.value = csrfValue;
+        tempForm.appendChild(csrfInput);
+    }
+    
+    document.body.appendChild(tempForm);
+    tempForm.submit();
+    document.body.removeChild(tempForm);
+    
+    // Show success message
+    if (window.toastManager) {
+        window.toastManager.show(`Export started! Your ${format.toUpperCase()} file will download shortly.`, 'success', 'Export');
+    }
 }

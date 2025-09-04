@@ -19,6 +19,96 @@ class ContractService:
     """Service for handling contract operations"""
 
     @staticmethod
+    def get_all_contract_types():
+        """Get all unique contract types from the database"""
+        try:
+            # Get distinct contract types, excluding null values
+            contract_types = (
+                db.session.query(Contract.contract_type)
+                .distinct()
+                .filter(Contract.contract_type.isnot(None))
+                .filter(Contract.contract_type != "")
+                .order_by(Contract.contract_type)
+                .all()
+            )
+            
+            # Convert to list of tuples for form choices
+            type_choices = [(ct[0], ct[0]) for ct in contract_types if ct[0]]
+            
+            logger.info(f"Retrieved {len(type_choices)} contract types from database")
+            return type_choices
+            
+        except Exception as e:
+            logger.error(f"Error retrieving contract types: {e}")
+            # Return default fallback types if database query fails
+            return [
+                ("Service", "Service"),
+                ("Employment", "Employment"),
+                ("Lease", "Lease"),
+                ("Purchase", "Purchase"),
+                ("NDA", "NDA"),
+                ("Partnership", "Partnership"),
+                ("Other", "Other"),
+            ]
+
+    @staticmethod
+    def get_contract_type_choices_for_forms():
+        """Get contract type choices formatted for WTForms SelectField"""
+        try:
+            types = ContractService.get_all_contract_types()
+            # Add empty option and custom option at the beginning for forms
+            choices = [("", "Select contract type...")] + types + [("custom", "Create New Type...")]
+            return choices
+        except Exception as e:
+            logger.error(f"Error getting contract type choices: {e}")
+            return [
+                ("", "Select contract type..."),
+                ("Service", "Service"),
+                ("Employment", "Employment"),
+                ("Other", "Other"),
+                ("custom", "Create New Type..."),
+            ]
+
+    @staticmethod
+    def get_contract_type_choices_for_search():
+        """Get contract type choices formatted for search filters"""
+        try:
+            types = ContractService.get_all_contract_types()
+            # Add "All Types" option at the beginning for search
+            return [("", "All Types")] + types
+        except Exception as e:
+            logger.error(f"Error getting contract type choices for search: {e}")
+            return [
+                ("", "All Types"),
+                ("Service", "Service"),
+                ("Employment", "Employment"),
+                ("Other", "Other"),
+            ]
+
+    @staticmethod
+    def create_contract_type_if_not_exists(contract_type):
+        """Create a new contract type if it doesn't exist in the database"""
+        try:
+            if not contract_type or contract_type.strip() == "":
+                return False
+                
+            # Check if this type already exists
+            existing = (
+                db.session.query(Contract.contract_type)
+                .filter(Contract.contract_type == contract_type)
+                .first()
+            )
+            
+            if not existing:
+                logger.info(f"New contract type will be created when first contract is saved: {contract_type}")
+                
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error checking contract type: {e}")
+            return False
+
+    @staticmethod
     def create_contract(contract_data, file=None, created_by=None):
         """Create a new contract"""
         try:

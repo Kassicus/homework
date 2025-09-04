@@ -20,15 +20,6 @@
 <!-- Universal Search Component -->
 {% set search_action = url_for('contracts.index') %}
 {% set search_placeholder = 'Search contracts by title, description, or content...' %}
-{% set search_types = [
-    ('Service', 'Service Agreement'),
-    ('Employment', 'Employment Contract'),
-    ('Lease', 'Lease Agreement'),
-    ('Purchase', 'Purchase Agreement'),
-    ('NDA', 'Non-Disclosure Agreement'),
-    ('Partnership', 'Partnership Agreement'),
-    ('Other', 'Other')
-] %}
 {% set status_options = [
     ('draft', 'Draft'),
     ('under_review', 'Under Review'),
@@ -36,15 +27,6 @@
     ('expired', 'Expired'),
     ('terminated', 'Terminated'),
     ('renewed', 'Renewed')
-] %}
-{% set contract_types = [
-    ('Service', 'Service Agreement'),
-    ('Employment', 'Employment Contract'),
-    ('Lease', 'Lease Agreement'),
-    ('Purchase', 'Purchase Agreement'),
-    ('NDA', 'Non-Disclosure Agreement'),
-    ('Partnership', 'Partnership Agreement'),
-    ('Other', 'Other')
 ] %}
 {% set show_client_filter = true %}
 {% set show_contract_type_filter = true %}

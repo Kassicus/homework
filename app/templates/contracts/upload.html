@@ -39,21 +39,58 @@
                     </div>
                     {% endif %}
                     
-                    <!-- File Upload Field -->
+                    <!-- Modern File Upload Field -->
                     <div class="mb-4">
                         {{ form.contract_file.label(class="form-label fw-bold") }}
-                        {{ form.contract_file(class="form-control" + (" is-invalid" if form.contract_file.errors else ""), accept=".pdf,.doc,.docx,.txt,.rtf") }}
+                        
+                        <!-- Custom Drag & Drop Upload Area -->
+                        <div class="upload-area" id="uploadArea">
+                            <div class="upload-content">
+                                <div class="upload-icon">
+                                    <i class="bi bi-cloud-upload"></i>
+                                </div>
+                                <div class="upload-text">
+                                    <h5 class="mb-2">Drag & Drop your file here</h5>
+                                    <p class="text-muted mb-3">or click to browse your files</p>
+                                    <button type="button" class="btn btn-outline-primary" id="browseButton">
+                                        <i class="bi bi-folder2-open me-2"></i>Browse Files
+                                    </button>
+                                </div>
+                                <div class="upload-info mt-3">
+                                    <small class="text-muted">
+                                        <i class="bi bi-info-circle me-1"></i>
+                                        Supported: PDF, Word (.doc, .docx), Text (.txt), RTF • Max size: 125MB
+                                    </small>
+                                </div>
+                            </div>
+                            
+                            <!-- File Selected State -->
+                            <div class="file-selected" id="fileSelected" style="display: none;">
+                                <div class="d-flex align-items-center justify-content-between">
+                                    <div class="d-flex align-items-center">
+                                        <i class="bi bi-file-earmark-check text-success me-3" style="font-size: 2rem;"></i>
+                                        <div>
+                                            <h6 class="mb-0" id="selectedFileName">File selected</h6>
+                                            <small class="text-muted" id="selectedFileInfo">Ready to upload</small>
+                                        </div>
+                                    </div>
+                                    <button type="button" class="btn btn-outline-secondary btn-sm" id="removeFile">
+                                        <i class="bi bi-x-lg"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Hidden file input -->
+                        {{ form.contract_file(class="d-none", accept=".pdf,.doc,.docx,.txt,.rtf", id="fileInput") }}
+                        
                         {% if form.contract_file.errors %}
-                            <div class="invalid-feedback">
+                            <div class="invalid-feedback d-block">
                                 {% for error in form.contract_file.errors %}
                                     {{ error }}
                                 {% endfor %}
                             </div>
                         {% endif %}
-                        <div class="form-text">
-                            <i class="bi bi-file-earmark me-1"></i>
-                            Supported formats: PDF, Word (.doc, .docx), Text (.txt), RTF
-                        </div>
                     </div>
                     
                     <!-- Document Type -->
@@ -213,26 +250,290 @@
     border-radius: 0.5rem;
 }
 
-.form-control[type="file"] {
-    padding: 0.75rem;
-    border: 2px dashed var(--border-color);
-    background-color: var(--bg-tertiary);
+/* Modern Upload Area Styling */
+.upload-area {
+    border: 3px dashed var(--border-color);
+    border-radius: 1rem;
+    background: var(--bg-tertiary);
+    padding: 3rem 2rem;
+    text-align: center;
+    transition: all 0.3s ease;
+    cursor: pointer;
+    position: relative;
+    min-height: 200px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.upload-area:hover {
+    border-color: var(--primary);
+    background: rgba(113, 169, 247, 0.05);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(113, 169, 247, 0.15);
+}
+
+.upload-area.drag-over {
+    border-color: var(--primary);
+    background: rgba(113, 169, 247, 0.1);
+    transform: scale(1.02);
+    box-shadow: 0 12px 30px rgba(113, 169, 247, 0.2);
+}
+
+.upload-area.has-file {
+    border-color: #2FBF71;
+    background: rgba(47, 191, 113, 0.05);
+    border-style: solid;
+}
+
+.upload-content {
+    width: 100%;
+}
+
+.upload-icon {
+    font-size: 4rem;
+    color: var(--primary);
+    margin-bottom: 1rem;
     transition: all 0.3s ease;
 }
 
-.form-control[type="file"]:hover {
-    border-color: var(--primary-color);
-    background-color: rgba(113, 169, 247, 0.05);
+.upload-area:hover .upload-icon {
+    transform: scale(1.1);
+    color: var(--primary);
 }
 
-.form-control[type="file"]:focus {
-    border-color: var(--primary-color);
-    background-color: rgba(113, 169, 247, 0.05);
-    box-shadow: 0 0 0 0.2rem rgba(113, 169, 247, 0.25);
+.upload-area.drag-over .upload-icon {
+    transform: scale(1.2);
+    color: var(--primary);
+}
+
+.upload-text h5 {
+    color: var(--text-primary);
+    font-weight: 600;
+}
+
+.upload-info {
+    border-top: 1px solid var(--border-color);
+    padding-top: 1rem;
+    margin-top: 1.5rem;
+}
+
+.file-selected {
+    padding: 2rem;
+    background: rgba(47, 191, 113, 0.05);
+    border-radius: 0.75rem;
+    border: 2px solid #2FBF71;
 }
 
 .btn-lg {
     padding: 0.75rem 2rem;
 }
+
+/* File type validation styling */
+.upload-area.invalid {
+    border-color: #EF2D56;
+    background: rgba(239, 45, 86, 0.05);
+    animation: shake 0.5s ease-in-out;
+}
+
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-5px); }
+    75% { transform: translateX(5px); }
+}
+
+/* Progress indicator */
+.upload-progress {
+    display: none;
+    margin-top: 1rem;
+}
+
+.progress-bar {
+    background-color: var(--primary);
+}
+
+/* Mobile responsive */
+@media (max-width: 768px) {
+    .upload-area {
+        padding: 2rem 1rem;
+        min-height: 150px;
+    }
+    
+    .upload-icon {
+        font-size: 3rem;
+    }
+    
+    .upload-text h5 {
+        font-size: 1.1rem;
+    }
+}
 </style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const uploadArea = document.getElementById('uploadArea');
+    const fileInput = document.getElementById('fileInput');
+    const browseButton = document.getElementById('browseButton');
+    const uploadContent = document.querySelector('.upload-content');
+    const fileSelected = document.getElementById('fileSelected');
+    const selectedFileName = document.getElementById('selectedFileName');
+    const selectedFileInfo = document.getElementById('selectedFileInfo');
+    const removeFileButton = document.getElementById('removeFile');
+    
+    // Allowed file types
+    const allowedTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'text/plain', 'application/rtf'];
+    const allowedExtensions = ['.pdf', '.doc', '.docx', '.txt', '.rtf'];
+    
+    // File size limit (125MB)
+    const maxFileSize = 125 * 1024 * 1024;
+    
+    // Browse button click
+    browseButton.addEventListener('click', function() {
+        fileInput.click();
+    });
+    
+    // Upload area click
+    uploadArea.addEventListener('click', function(e) {
+        if (e.target === uploadArea || e.target.closest('.upload-content')) {
+            fileInput.click();
+        }
+    });
+    
+    // File input change
+    fileInput.addEventListener('change', function(e) {
+        handleFileSelect(e.target.files[0]);
+    });
+    
+    // Drag and drop events
+    uploadArea.addEventListener('dragover', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        uploadArea.classList.add('drag-over');
+    });
+    
+    uploadArea.addEventListener('dragleave', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        // Only remove drag-over if we're actually leaving the upload area
+        if (!uploadArea.contains(e.relatedTarget)) {
+            uploadArea.classList.remove('drag-over');
+        }
+    });
+    
+    uploadArea.addEventListener('drop', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        uploadArea.classList.remove('drag-over');
+        
+        const files = e.dataTransfer.files;
+        if (files.length > 0) {
+            handleFileSelect(files[0]);
+        }
+    });
+    
+    // Remove file button
+    removeFileButton.addEventListener('click', function() {
+        clearFileSelection();
+    });
+    
+    function handleFileSelect(file) {
+        if (!file) {
+            return;
+        }
+        
+        // Validate file type
+        const fileExtension = '.' + file.name.split('.').pop().toLowerCase();
+        const isValidType = allowedTypes.includes(file.type) || allowedExtensions.includes(fileExtension);
+        
+        if (!isValidType) {
+            showError('Invalid file type. Please select a PDF, Word, Text, or RTF file.');
+            return;
+        }
+        
+        // Validate file size
+        if (file.size > maxFileSize) {
+            showError('File is too large. Maximum size is 125MB.');
+            return;
+        }
+        
+        // Update file input
+        const dt = new DataTransfer();
+        dt.items.add(file);
+        fileInput.files = dt.files;
+        
+        // Update UI
+        showFileSelected(file);
+    }
+    
+    function showFileSelected(file) {
+        // Update file info
+        selectedFileName.textContent = file.name;
+        selectedFileInfo.textContent = `${formatFileSize(file.size)} • ${getFileTypeDisplay(file)}`;
+        
+        // Show selected state
+        uploadContent.style.display = 'none';
+        fileSelected.style.display = 'block';
+        uploadArea.classList.add('has-file');
+        
+        // Clear any error states
+        uploadArea.classList.remove('invalid');
+    }
+    
+    function clearFileSelection() {
+        // Clear file input
+        fileInput.value = '';
+        
+        // Reset UI
+        uploadContent.style.display = 'block';
+        fileSelected.style.display = 'none';
+        uploadArea.classList.remove('has-file', 'invalid');
+    }
+    
+    function showError(message) {
+        uploadArea.classList.add('invalid');
+        
+        // Create toast notification for error
+        if (window.toastManager) {
+            window.toastManager.show(message, 'error', 'File Error');
+        } else {
+            alert(message);
+        }
+        
+        // Remove invalid class after animation
+        setTimeout(() => {
+            uploadArea.classList.remove('invalid');
+        }, 500);
+    }
+    
+    function formatFileSize(bytes) {
+        if (bytes === 0) return '0 Bytes';
+        const k = 1024;
+        const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    }
+    
+    function getFileTypeDisplay(file) {
+        const extension = file.name.split('.').pop().toUpperCase();
+        const typeMap = {
+            'PDF': 'PDF Document',
+            'DOC': 'Word Document',
+            'DOCX': 'Word Document',
+            'TXT': 'Text Document',
+            'RTF': 'Rich Text Document'
+        };
+        return typeMap[extension] || extension + ' File';
+    }
+    
+    // Prevent default drag behaviors on the document
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+        document.addEventListener(eventName, function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }, false);
+    });
+});
+</script>
 {% endblock %}

@@ -28,7 +28,7 @@
                         </div>
                         <div class="col-md-4 mb-3">
                             {{ form.contract_type.label(class="form-label") }}
-                            {{ form.contract_type(class="form-select" + (" is-invalid" if form.contract_type.errors else "")) }}
+                            {{ form.contract_type(class="form-select" + (" is-invalid" if form.contract_type.errors else ""), id="contract_type_select") }}
                             {% if form.contract_type.errors %}
                                 <div class="invalid-feedback">
                                     {% for error in form.contract_type.errors %}
@@ -36,6 +36,19 @@
                                     {% endfor %}
                                 </div>
                             {% endif %}
+                            
+                            <!-- Custom contract type field (hidden by default) -->
+                            <div id="custom_type_field" class="mt-2" style="display: none;">
+                                {{ form.custom_contract_type.label(class="form-label small text-muted") }}
+                                {{ form.custom_contract_type(class="form-control" + (" is-invalid" if form.custom_contract_type.errors else "")) }}
+                                {% if form.custom_contract_type.errors %}
+                                    <div class="invalid-feedback">
+                                        {% for error in form.custom_contract_type.errors %}
+                                            {{ error }}
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
+                            </div>
                         </div>
                     </div>
                     <div class="mb-3">
@@ -108,20 +121,60 @@
                             {% endif %}
                         </div>
                     </div>
+                    <!-- Modern File Upload Field -->
                     <div class="mb-3">
                         {{ form.contract_file.label(class="form-label") }}
-                        {{ form.contract_file(class="form-control" + (" is-invalid" if form.contract_file.errors else ""), accept=".pdf,.doc,.docx,.txt,.rtf") }}
+                        
+                        {% if contract.has_documents() %}
+                        <div class="alert alert-info mb-3">
+                            <i class="bi bi-info-circle me-2"></i>
+                            <strong>Current Documents:</strong> This contract has {{ contract.get_document_count() }} document(s).
+                            <br><small class="text-muted">Upload a new file to replace or add to existing documents.</small>
+                        </div>
+                        {% endif %}
+                        
+                        <!-- Custom Drag & Drop Upload Area -->
+                        <div class="upload-area-compact" id="uploadAreaEdit">
+                            <div class="upload-content-compact">
+                                <div class="d-flex align-items-center justify-content-center">
+                                    <i class="bi bi-cloud-upload me-3" style="font-size: 2rem; color: var(--primary);"></i>
+                                    <div class="text-center">
+                                        <p class="mb-1"><strong>Drag & Drop file or</strong></p>
+                                        <button type="button" class="btn btn-outline-primary btn-sm" id="browseButtonEdit">
+                                            <i class="bi bi-folder2-open me-1"></i>Browse Files
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="upload-info-compact mt-2">
+                                    <small class="text-muted">PDF, Word, Text, RTF • Max 125MB</small>
+                                </div>
+                            </div>
+                            
+                            <!-- File Selected State -->
+                            <div class="file-selected-compact" id="fileSelectedEdit" style="display: none;">
+                                <div class="d-flex align-items-center justify-content-between">
+                                    <div class="d-flex align-items-center">
+                                        <i class="bi bi-file-earmark-check text-success me-2"></i>
+                                        <div>
+                                            <span class="fw-bold" id="selectedFileNameEdit">File selected</span>
+                                            <br><small class="text-muted" id="selectedFileInfoEdit">Ready to upload</small>
+                                        </div>
+                                    </div>
+                                    <button type="button" class="btn btn-outline-secondary btn-sm" id="removeFileEdit">
+                                        <i class="bi bi-x-lg"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Hidden file input -->
+                        {{ form.contract_file(class="d-none", accept=".pdf,.doc,.docx,.txt,.rtf", id="fileInputEdit") }}
+                        
                         {% if form.contract_file.errors %}
-                            <div class="invalid-feedback">
+                            <div class="invalid-feedback d-block">
                                 {% for error in form.contract_file.errors %}
                                     {{ error }}
                                 {% endfor %}
-                            </div>
-                        {% endif %}
-                        <div class="form-text">Supported formats: PDF, Word, Text, RTF</div>
-                        {% if contract.file_name %}
-                            <div class="mt-2">
-                                <small class="text-muted">Current file: {{ contract.file_name }}</small>
                             </div>
                         {% endif %}
                     </div>
@@ -136,4 +189,262 @@
         </div>
     </div>
 </div>
+
+{% block extra_css %}
+<style>
+/* Compact Upload Area for Contract Forms */
+.upload-area-compact {
+    border: 2px dashed var(--border-color);
+    border-radius: 0.75rem;
+    background: var(--bg-tertiary);
+    padding: 1.5rem;
+    text-align: center;
+    transition: all 0.3s ease;
+    cursor: pointer;
+    min-height: 120px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.upload-area-compact:hover {
+    border-color: var(--primary);
+    background: rgba(113, 169, 247, 0.05);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 15px rgba(113, 169, 247, 0.1);
+}
+
+.upload-area-compact.drag-over {
+    border-color: var(--primary);
+    background: rgba(113, 169, 247, 0.1);
+    transform: scale(1.01);
+    box-shadow: 0 6px 20px rgba(113, 169, 247, 0.15);
+}
+
+.upload-area-compact.has-file {
+    border-color: #2FBF71;
+    background: rgba(47, 191, 113, 0.05);
+    border-style: solid;
+}
+
+.upload-area-compact.invalid {
+    border-color: #EF2D56;
+    background: rgba(239, 45, 86, 0.05);
+    animation: shake 0.5s ease-in-out;
+}
+
+.upload-content-compact {
+    width: 100%;
+}
+
+.file-selected-compact {
+    padding: 1rem;
+    background: rgba(47, 191, 113, 0.05);
+    border-radius: 0.5rem;
+}
+
+.upload-info-compact {
+    border-top: 1px solid var(--border-color);
+    padding-top: 0.75rem;
+    margin-top: 1rem;
+}
+
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-3px); }
+    75% { transform: translateX(3px); }
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const contractTypeSelect = document.getElementById('contract_type_select');
+    const customTypeField = document.getElementById('custom_type_field');
+    
+    function toggleCustomTypeField() {
+        if (contractTypeSelect.value === 'custom') {
+            customTypeField.style.display = 'block';
+            document.getElementById('custom_contract_type').required = true;
+        } else {
+            customTypeField.style.display = 'none';
+            document.getElementById('custom_contract_type').required = false;
+            document.getElementById('custom_contract_type').value = '';
+        }
+    }
+    
+    // Initial check
+    toggleCustomTypeField();
+    
+    // Listen for changes
+    contractTypeSelect.addEventListener('change', toggleCustomTypeField);
+    
+    // File upload functionality
+    const uploadArea = document.getElementById('uploadAreaEdit');
+    const fileInput = document.getElementById('fileInputEdit');
+    const browseButton = document.getElementById('browseButtonEdit');
+    const uploadContent = document.querySelector('.upload-content-compact');
+    const fileSelected = document.getElementById('fileSelectedEdit');
+    const selectedFileName = document.getElementById('selectedFileNameEdit');
+    const selectedFileInfo = document.getElementById('selectedFileInfoEdit');
+    const removeFileButton = document.getElementById('removeFileEdit');
+    
+    if (uploadArea && fileInput) {
+        // Allowed file types
+        const allowedTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'text/plain', 'application/rtf'];
+        const allowedExtensions = ['.pdf', '.doc', '.docx', '.txt', '.rtf'];
+        
+        // File size limit (125MB)
+        const maxFileSize = 125 * 1024 * 1024;
+        
+        // Browse button click
+        browseButton.addEventListener('click', function() {
+            fileInput.click();
+        });
+        
+        // Upload area click
+        uploadArea.addEventListener('click', function(e) {
+            if (e.target === uploadArea || e.target.closest('.upload-content-compact')) {
+                fileInput.click();
+            }
+        });
+        
+        // File input change
+        fileInput.addEventListener('change', function(e) {
+            handleFileSelect(e.target.files[0]);
+        });
+        
+        // Drag and drop events
+        uploadArea.addEventListener('dragover', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            uploadArea.classList.add('drag-over');
+        });
+        
+        uploadArea.addEventListener('dragleave', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            if (!uploadArea.contains(e.relatedTarget)) {
+                uploadArea.classList.remove('drag-over');
+            }
+        });
+        
+        uploadArea.addEventListener('drop', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            uploadArea.classList.remove('drag-over');
+            
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleFileSelect(files[0]);
+            }
+        });
+        
+        // Remove file button
+        if (removeFileButton) {
+            removeFileButton.addEventListener('click', function() {
+                clearFileSelection();
+            });
+        }
+        
+        function handleFileSelect(file) {
+            if (!file) {
+                return;
+            }
+            
+            // Validate file type
+            const fileExtension = '.' + file.name.split('.').pop().toLowerCase();
+            const isValidType = allowedTypes.includes(file.type) || allowedExtensions.includes(fileExtension);
+            
+            if (!isValidType) {
+                showError('Invalid file type. Please select a PDF, Word, Text, or RTF file.');
+                return;
+            }
+            
+            // Validate file size
+            if (file.size > maxFileSize) {
+                showError('File is too large. Maximum size is 125MB.');
+                return;
+            }
+            
+            // Update file input
+            const dt = new DataTransfer();
+            dt.items.add(file);
+            fileInput.files = dt.files;
+            
+            // Update UI
+            showFileSelected(file);
+        }
+        
+        function showFileSelected(file) {
+            // Update file info
+            selectedFileName.textContent = file.name;
+            selectedFileInfo.textContent = `${formatFileSize(file.size)} • ${getFileTypeDisplay(file)}`;
+            
+            // Show selected state
+            uploadContent.style.display = 'none';
+            fileSelected.style.display = 'block';
+            uploadArea.classList.add('has-file');
+            
+            // Clear any error states
+            uploadArea.classList.remove('invalid');
+        }
+        
+        function clearFileSelection() {
+            // Clear file input
+            fileInput.value = '';
+            
+            // Reset UI
+            uploadContent.style.display = 'block';
+            fileSelected.style.display = 'none';
+            uploadArea.classList.remove('has-file', 'invalid');
+        }
+        
+        function showError(message) {
+            uploadArea.classList.add('invalid');
+            
+            // Create toast notification for error
+            if (window.toastManager) {
+                window.toastManager.show(message, 'error', 'File Error');
+            } else {
+                alert(message);
+            }
+            
+            // Remove invalid class after animation
+            setTimeout(() => {
+                uploadArea.classList.remove('invalid');
+            }, 500);
+        }
+        
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+        
+        function getFileTypeDisplay(file) {
+            const extension = file.name.split('.').pop().toUpperCase();
+            const typeMap = {
+                'PDF': 'PDF Document',
+                'DOC': 'Word Document',
+                'DOCX': 'Word Document',
+                'TXT': 'Text Document',
+                'RTF': 'Rich Text Document'
+            };
+            return typeMap[extension] || extension + ' File';
+        }
+    }
+    
+    // Prevent default drag behaviors on the document
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+        document.addEventListener(eventName, function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }, false);
+    });
+});
+</script>
 {% endblock %}

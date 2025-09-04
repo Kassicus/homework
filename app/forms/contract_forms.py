@@ -45,17 +45,18 @@ class ContractForm(FlaskForm):
 
     contract_type = SelectField(
         "Contract Type",
-        choices=[
-            ("", "Select contract type..."),
-            ("Service", "Service Agreement"),
-            ("Employment", "Employment Contract"),
-            ("Lease", "Lease Agreement"),
-            ("Purchase", "Purchase Agreement"),
-            ("NDA", "Non-Disclosure Agreement"),
-            ("Partnership", "Partnership Agreement"),
-            ("Other", "Other"),
-        ],
+        choices=[],  # Will be populated dynamically
         validators=[DataRequired(message="Please select a contract type")],
+    )
+    
+    # Field for custom contract type
+    custom_contract_type = StringField(
+        "Custom Contract Type",
+        validators=[
+            Optional(),
+            Length(min=1, max=100, message="Contract type must be between 1 and 100 characters"),
+        ],
+        render_kw={"placeholder": "Enter new contract type..."}
     )
 
     status = SelectField(
@@ -175,16 +176,7 @@ class ContractSearchForm(FlaskForm):
 
     contract_type = SelectField(
         "Contract Type",
-        choices=[
-            ("", "All Types"),
-            ("Service", "Service Agreement"),
-            ("Employment", "Employment Contract"),
-            ("Lease", "Lease Agreement"),
-            ("Purchase", "Purchase Agreement"),
-            ("NDA", "Non-Disclosure Agreement"),
-            ("Partnership", "Partnership Agreement"),
-            ("Other", "Other"),
-        ],
+        choices=[],  # Will be populated dynamically
     )
 
     client_id = SelectField("Client", coerce=int, choices=[(0, "All Clients")])
