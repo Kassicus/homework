@@ -2,6 +2,8 @@
 Contract routes for Contract Management Platform
 """
 import logging
+import os
+from datetime import datetime
 
 from flask import (
     Blueprint,
@@ -18,7 +20,10 @@ from flask_login import current_user, login_required
 from app import db
 from app.models.client import Client
 from app.models.contract import Contract
+from app.models.contract_document import ContractDocument
 from app.services.contract_service import ContractService
+from app.services.document_service import DocumentService
+from app.services.file_service import FileService
 from app.utils.activity_decorators import (
     log_view, log_create, log_update, log_delete, log_restore,
     get_contract_info
@@ -344,6 +349,171 @@ def update_status(contract_id):
     except Exception as e:
         logger.error(f"Error updating contract status {contract_id}: {e}")
         flash("An error occurred while updating the contract status.", "error")
+        return redirect(url_for("contracts.show", contract_id=contract_id))
+
+
+@contracts_bp.route("/<int:contract_id>/documents/upload", methods=["GET", "POST"])
+@login_required
+def upload_document(contract_id):
+    """Upload document to existing contract (supports multiple documents)"""
+    from app.forms.contract_forms import DocumentUploadForm
+    
+    try:
+        contract = ContractService.get_contract_by_id(contract_id)
+        
+        if not contract:
+            flash("Contract not found.", "error")
+            return redirect(url_for("contracts.index"))
+        
+        # Migrate legacy document if needed
+        DocumentService.migrate_legacy_document(contract)
+        
+        form = DocumentUploadForm()
+        
+        if form.validate_on_submit():
+            try:
+                # Get uploaded file and form data
+                file = form.contract_file.data
+                document_type = form.document_type.data
+                description = form.description.data if form.description.data else None
+                is_primary = form.is_primary.data == "true"
+                
+                # Upload document using new service
+                document = DocumentService.upload_document(
+                    contract_id=contract_id,
+                    file=file,
+                    uploaded_by=current_user.id,
+                    document_type=document_type,
+                    description=description,
+                    is_primary=is_primary
+                )
+                
+                flash(f'Document "{document.original_filename}" uploaded successfully!', "success")
+                return redirect(url_for("contracts.show", contract_id=contract.id))
+                
+            except Exception as file_error:
+                logger.error(f"Error uploading document to contract {contract_id}: {file_error}")
+                flash(f"An error occurred while uploading the document: {str(file_error)}", "error")
+        
+        elif form.errors:
+            # Form validation failed
+            for field, errors in form.errors.items():
+                for error in errors:
+                    flash(f"{getattr(form, field).label.text}: {error}", "error")
+        
+        # Get existing documents for display
+        existing_documents = DocumentService.get_contract_documents(contract_id)
+        
+        # Show upload form (GET request or validation failed)
+        return render_template("contracts/upload.html", contract=contract, form=form, existing_documents=existing_documents)
+        
+    except Exception as e:
+        logger.error(f"Error in document upload for contract {contract_id}: {e}")
+        flash("An error occurred while processing the upload.", "error")
+        return redirect(url_for("contracts.show", contract_id=contract_id))
+
+
+@contracts_bp.route("/<int:contract_id>/documents/<int:document_id>/delete", methods=["POST"])
+@login_required
+def delete_document(contract_id, document_id):
+    """Delete a specific document from a contract"""
+    try:
+        contract = ContractService.get_contract_by_id(contract_id)
+        
+        if not contract:
+            flash("Contract not found.", "error")
+            return redirect(url_for("contracts.index"))
+        
+        document = DocumentService.get_document_by_id(document_id)
+        
+        if not document or document.contract_id != contract_id:
+            flash("Document not found.", "error")
+            return redirect(url_for("contracts.show", contract_id=contract_id))
+        
+        # Store filename for success message
+        filename = document.original_filename
+        
+        # Delete document
+        DocumentService.delete_document(document_id, contract_id)
+        
+        flash(f'Document "{filename}" has been deleted.', "success")
+        return redirect(url_for("contracts.show", contract_id=contract_id))
+        
+    except Exception as e:
+        logger.error(f"Error deleting document {document_id} from contract {contract_id}: {e}")
+        flash("An error occurred while deleting the document.", "error")
+        return redirect(url_for("contracts.show", contract_id=contract_id))
+
+
+@contracts_bp.route("/<int:contract_id>/documents/<int:document_id>/set-primary", methods=["POST"])
+@login_required
+def set_primary_document(contract_id, document_id):
+    """Set a document as the primary document for a contract"""
+    try:
+        contract = ContractService.get_contract_by_id(contract_id)
+        
+        if not contract:
+            flash("Contract not found.", "error")
+            return redirect(url_for("contracts.index"))
+        
+        document = DocumentService.set_primary_document(document_id, contract_id)
+        
+        flash(f'"{document.original_filename}" is now the primary document.', "success")
+        return redirect(url_for("contracts.show", contract_id=contract_id))
+        
+    except Exception as e:
+        logger.error(f"Error setting primary document {document_id} for contract {contract_id}: {e}")
+        flash("An error occurred while setting the primary document.", "error")
+        return redirect(url_for("contracts.show", contract_id=contract_id))
+
+
+@contracts_bp.route("/<int:contract_id>/documents/<int:document_id>/download")
+@login_required
+def download_document(contract_id, document_id):
+    """Download a specific document"""
+    try:
+        contract = ContractService.get_contract_by_id(contract_id)
+        
+        if not contract:
+            flash("Contract not found.", "error")
+            return redirect(url_for("contracts.index"))
+        
+        document = DocumentService.get_document_by_id(document_id)
+        
+        if not document or document.contract_id != contract_id:
+            flash("Document not found.", "error")
+            return redirect(url_for("contracts.show", contract_id=contract_id))
+        
+        # Security and file existence checks
+        if not os.path.exists(document.file_path):
+            flash("Document file not found on server.", "error")
+            return redirect(url_for("contracts.show", contract_id=contract_id))
+        
+        # Log access
+        try:
+            contract.log_access(
+                user_id=current_user.id,
+                access_type="download",
+                ip_address=request.remote_addr,
+                user_agent=request.user_agent.string,
+            )
+            db.session.commit()
+        except Exception as access_error:
+            logger.warning(f"Failed to log document download access: {access_error}")
+            db.session.rollback()
+        
+        # Send file
+        from flask import send_file
+        return send_file(
+            document.file_path,
+            as_attachment=True,
+            download_name=document.original_filename,
+            mimetype=document.mime_type
+        )
+        
+    except Exception as e:
+        logger.error(f"Error downloading document {document_id} from contract {contract_id}: {e}")
+        flash("An error occurred while downloading the document.", "error")
         return redirect(url_for("contracts.show", contract_id=contract_id))
 
 

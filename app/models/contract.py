@@ -43,6 +43,13 @@ class Contract(db.Model):
     # Relationships
     client = db.relationship("Client", lazy="joined", back_populates="contracts")
     creator = db.relationship("User", lazy="joined", back_populates="contracts_created")
+    documents = db.relationship(
+        "ContractDocument",
+        back_populates="contract",
+        lazy="dynamic",
+        order_by="ContractDocument.uploaded_at.desc()",
+        cascade="all, delete-orphan"
+    )
     status_history = db.relationship(
         "ContractStatusHistory",
         backref="contract",
@@ -174,6 +181,47 @@ class Contract(db.Model):
         )
         db.session.add(access_log)
         return access_log
+
+    def get_primary_document(self):
+        """Get the primary document for this contract"""
+        return self.documents.filter_by(is_primary=True).first()
+
+    def get_all_documents(self):
+        """Get all documents for this contract"""
+        return self.documents.all()
+
+    def has_documents(self):
+        """Check if contract has any documents"""
+        return self.documents.count() > 0
+
+    def get_document_count(self):
+        """Get total number of documents"""
+        return self.documents.count()
+
+    # Legacy compatibility methods for single document support
+    @property
+    def legacy_file_path(self):
+        """Legacy file_path for backward compatibility"""
+        primary_doc = self.get_primary_document()
+        return primary_doc.file_path if primary_doc else self.file_path
+
+    @property
+    def legacy_file_name(self):
+        """Legacy file_name for backward compatibility"""
+        primary_doc = self.get_primary_document()
+        return primary_doc.file_name if primary_doc else self.file_name
+
+    @property
+    def legacy_file_size(self):
+        """Legacy file_size for backward compatibility"""
+        primary_doc = self.get_primary_document()
+        return primary_doc.file_size if primary_doc else self.file_size
+
+    @property
+    def legacy_mime_type(self):
+        """Legacy mime_type for backward compatibility"""
+        primary_doc = self.get_primary_document()
+        return primary_doc.mime_type if primary_doc else self.mime_type
 
 
 class ContractStatusHistory(db.Model):

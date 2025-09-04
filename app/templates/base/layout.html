@@ -72,13 +72,6 @@
                 
                 <ul class="sidebar-nav">
                     <li class="nav-item">
-                        <a class="nav-link {{ 'active' if request.endpoint == 'auth.profile' }}" href="{{ url_for('auth.profile') }}">
-                            <i class="bi bi-person me-2"></i>
-                            <span>Profile</span>
-                        </a>
-                    </li>
-
-                    <li class="nav-item">
                         <a class="nav-link" href="{{ url_for('auth.logout') }}">
                             <i class="bi bi-box-arrow-right me-2"></i>
                             <span>Logout</span>
@@ -87,10 +80,12 @@
                 </ul>
                 
                 <div class="sidebar-user">
-                    <div class="user-info">
-                        <i class="bi bi-person-circle me-2"></i>
-                        <span>{{ current_user.username }}</span>
-                    </div>
+                    <a href="{{ url_for('auth.profile') }}" class="user-info-link {{ 'active' if request.endpoint == 'auth.profile' }}">
+                        <div class="user-info">
+                            <i class="bi bi-person-circle me-2"></i>
+                            <span>{{ current_user.username }}</span>
+                        </div>
+                    </a>
                 </div>
             </div>
         </nav>

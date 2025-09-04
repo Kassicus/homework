@@ -100,6 +100,55 @@ class ContractForm(FlaskForm):
     save_and_continue = SubmitField("Save & Continue")
 
 
+class DocumentUploadForm(FlaskForm):
+    """Form for uploading documents to contracts (supports multiple documents)"""
+    
+    contract_file = FileField(
+        "Contract Document",
+        validators=[
+            DataRequired(message="Please select a file to upload"),
+            FileAllowed(
+                ["pdf", "doc", "docx", "txt", "rtf"],
+                message="Only PDF, Word, and text files are allowed",
+            ),
+        ],
+    )
+    
+    document_type = SelectField(
+        "Document Type",
+        choices=[
+            ("contract", "Main Contract"),
+            ("amendment", "Amendment"),
+            ("attachment", "Attachment"),
+            ("addendum", "Addendum"),
+            ("schedule", "Schedule"),
+            ("exhibit", "Exhibit"),
+            ("other", "Other"),
+        ],
+        default="contract",
+        validators=[DataRequired(message="Please select a document type")],
+    )
+    
+    description = StringField(
+        "Description (Optional)",
+        validators=[
+            Optional(),
+            Length(max=500, message="Description must be less than 500 characters"),
+        ],
+    )
+    
+    is_primary = SelectField(
+        "Set as Primary Document",
+        choices=[
+            ("false", "No"),
+            ("true", "Yes - Make this the main contract document"),
+        ],
+        default="false",
+    )
+    
+    submit = SubmitField("Upload Document")
+
+
 class ContractSearchForm(FlaskForm):
     """Contract search form"""
 

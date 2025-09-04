@@ -175,15 +175,52 @@ h1, h2, h3, h4, h5, h6 {
 
 .sidebar-user {
     margin-top: auto;
-    padding: 1rem 1.25rem;
     border-top: 1px solid var(--border-color);
+}
+
+.user-info-link {
+    display: block;
+    padding: 0.75rem 1.25rem;
+    color: var(--text-secondary);
+    text-decoration: none;
+    transition: all 0.2s ease-in-out;
+    border-left: 3px solid transparent;
+}
+
+.user-info-link:hover {
+    color: var(--text-primary);
+    background-color: var(--bg-tertiary);
+    text-decoration: none;
+}
+
+.user-info-link.active {
+    color: var(--primary-color);
+    background-color: rgba(113, 169, 247, 0.1);
+    border-left-color: var(--primary-color);
+}
+
+.user-info-link.active .user-info {
+    color: var(--primary-color) !important;
+}
+
+.user-info-link.active .user-info i {
+    color: var(--primary-color) !important;
+}
+
+.user-info-link.active .user-info span {
+    color: var(--primary-color) !important;
 }
 
 .user-info {
     display: flex;
     align-items: center;
-    color: var(--text-muted);
     font-size: 0.875rem;
+    font-weight: 600;
+}
+
+.user-info i {
+    width: 20px;
+    text-align: center;
 }
 
 /* Main Content Area */
@@ -1177,4 +1214,67 @@ h1, h2, h3, h4, h5, h6 {
 .file-preview .img-thumbnail {
     border-color: var(--border-color) !important;
     background-color: var(--card-bg) !important;
+}
+
+/* Login Page Specific Styling */
+.login-body {
+    background: linear-gradient(135deg, var(--bg-primary) 0%, var(--bg-secondary) 100%);
+    font-family: var(--font-family-sans-serif);
+    color: var(--text-primary);
+    margin: 0;
+    padding: 0;
+}
+
+.login-container {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem 1rem;
+}
+
+.login-container .card {
+    border: none;
+    border-radius: 1rem;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    background-color: var(--bg-secondary);
+}
+
+.login-container .card-header {
+    border-radius: 1rem 1rem 0 0;
+    border: none;
+    padding: 1.5rem;
+}
+
+.login-container .card-header.bg-primary {
+    background: linear-gradient(135deg, var(--primary-color) 0%, #5a94f3 100%) !important;
+}
+
+.login-container .card-header.bg-success {
+    background: linear-gradient(135deg, var(--success-color) 0%, #26a85f 100%) !important;
+}
+
+.login-container .card-body {
+    padding: 2rem;
+}
+
+/* Override main content margins for login page */
+.login-body .main-content {
+    margin-left: 0 !important;
+    max-width: 100% !important;
+}
+
+/* Responsive adjustments for login */
+@media (max-width: 576px) {
+    .login-container {
+        padding: 1rem 0.5rem;
+    }
+    
+    .login-container .col-md-6 {
+        max-width: 100%;
+    }
+    
+    .login-container .card-body {
+        padding: 1.5rem;
+    }
 }

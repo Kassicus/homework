@@ -4,216 +4,220 @@
 
 {% block extra_js %}
 <script>
-// PDF Preview functionality
-let pdfDoc = null;
-let pageNum = 1;
-let pageRendering = false;
-let pageNumPending = null;
-let scale = 0.8; // Reduced default scale for dual-page view
-let dualPageMode = true; // Enable dual-page by default
+// Multiple PDF Viewers functionality
+const pdfViewers = new Map(); // Store viewer instances for each document
 
-const canvas1 = document.getElementById('pdfCanvas1');
-const canvas2 = document.getElementById('pdfCanvas2');
-const ctx1 = canvas1 ? canvas1.getContext('2d') : null;
-const ctx2 = canvas2 ? canvas2.getContext('2d') : null;
-
-// Load PDF when modal is shown
-document.getElementById('previewModal').addEventListener('show.bs.modal', function () {
-    {% if contract.mime_type and 'pdf' in contract.mime_type %}
-    loadPDF('{{ url_for("contracts.download", contract_id=contract.id) }}');
-    {% endif %}
-});
-
-function loadPDF(url) {
-    // Show loading state
-    document.getElementById('pdfLoading').style.display = 'block';
-    document.getElementById('pdfContainer').style.display = 'none';
-    
-    // Load the PDF
-    pdfjsLib.getDocument(url).promise.then(function(pdf) {
-        pdfDoc = pdf;
-        updatePageInfo();
+// PDF Viewer class to handle individual document previews
+class PDFViewer {
+    constructor(docId) {
+        this.docId = docId;
+        this.pdfDoc = null;
+        this.pageNum = 1;
+        this.pageRendering = false;
+        this.pageNumPending = null;
+        this.scale = 0.8;
+        this.dualPageMode = true;
         
-        // Initial page render
-        renderPages();
+        this.canvas1 = document.getElementById(`pdfCanvas1_${docId}`);
+        this.canvas2 = document.getElementById(`pdfCanvas2_${docId}`);
+        this.ctx1 = this.canvas1 ? this.canvas1.getContext('2d') : null;
+        this.ctx2 = this.canvas2 ? this.canvas2.getContext('2d') : null;
         
-        // Update navigation buttons
-        updateNavigationButtons();
-        
-        // Hide loading state
-        document.getElementById('pdfLoading').style.display = 'none';
-        document.getElementById('pdfContainer').style.display = 'block';
-    }).catch(function(error) {
-        console.error('Error loading PDF:', error);
-        document.getElementById('pdfLoading').innerHTML = '<p class="text-danger">Error loading PDF preview</p>';
-    });
-}
-
-function renderPages() {
-    if (!pdfDoc) return;
-    
-    pageRendering = true;
-    
-    // Render left page
-    if (pageNum <= pdfDoc.numPages) {
-        renderSinglePage(pageNum, canvas1, ctx1);
-    } else {
-        // Clear canvas if no page to show
-        if (canvas1) {
-            ctx1.clearRect(0, 0, canvas1.width, canvas1.height);
-        }
+        this.setupEventListeners();
     }
     
-    // Render right page (next page)
-    if (dualPageMode && pageNum + 1 <= pdfDoc.numPages) {
-        renderSinglePage(pageNum + 1, canvas2, ctx2);
-    } else {
-        // Clear canvas if no page to show or single page mode
-        if (canvas2) {
-            ctx2.clearRect(0, 0, canvas2.width, canvas2.height);
-        }
+    setupEventListeners() {
+        const prevBtn = document.getElementById(`prevPage${this.docId}`);
+        const nextBtn = document.getElementById(`nextPage${this.docId}`);
+        const zoomInBtn = document.getElementById(`zoomIn${this.docId}`);
+        const zoomOutBtn = document.getElementById(`zoomOut${this.docId}`);
+        const toggleBtn = document.getElementById(`togglePageMode${this.docId}`);
+        
+        if (prevBtn) prevBtn.addEventListener('click', () => this.onPrevPage());
+        if (nextBtn) nextBtn.addEventListener('click', () => this.onNextPage());
+        if (zoomInBtn) zoomInBtn.addEventListener('click', () => this.onZoomIn());
+        if (zoomOutBtn) zoomOutBtn.addEventListener('click', () => this.onZoomOut());
+        if (toggleBtn) toggleBtn.addEventListener('click', () => this.togglePageMode());
     }
-}
-
-function renderSinglePage(num, canvas, ctx) {
-    if (!canvas || !ctx || num > pdfDoc.numPages) return;
     
-    pdfDoc.getPage(num).then(function(page) {
-        const viewport = page.getViewport({scale: scale});
-        canvas.height = viewport.height;
-        canvas.width = viewport.width;
+    loadPDF(url) {
+        const loadingEl = document.getElementById(`pdfLoading${this.docId}`);
+        const containerEl = document.getElementById(`pdfContainer${this.docId}`);
         
-        const renderContext = {
-            canvasContext: ctx,
-            viewport: viewport
-        };
+        if (loadingEl) loadingEl.style.display = 'block';
+        if (containerEl) containerEl.style.display = 'none';
         
-        const renderTask = page.render(renderContext);
-        
-        renderTask.promise.then(function() {
-            pageRendering = false;
-            if (pageNumPending !== null) {
-                renderPages(pageNumPending);
-                pageNumPending = null;
+        pdfjsLib.getDocument(url).promise.then((pdf) => {
+            this.pdfDoc = pdf;
+            this.updatePageInfo();
+            this.renderPages();
+            this.updateNavigationButtons();
+            
+            if (loadingEl) loadingEl.style.display = 'none';
+            if (containerEl) containerEl.style.display = 'block';
+        }).catch((error) => {
+            console.error('Error loading PDF:', error);
+            if (loadingEl) {
+                loadingEl.innerHTML = '<p class="text-danger">Error loading PDF preview</p>';
             }
         });
-    });
-}
-
-function updatePageInfo() {
-    if (!pdfDoc) return;
-    
-    let pageText;
-    if (dualPageMode && pageNum + 1 <= pdfDoc.numPages) {
-        pageText = `Pages ${pageNum}-${pageNum + 1} of ${pdfDoc.numPages}`;
-    } else {
-        pageText = `Page ${pageNum} of ${pdfDoc.numPages}`;
     }
     
-    document.getElementById('pageInfo').textContent = pageText;
-}
-
-function queueRenderPages(num) {
-    if (pageRendering) {
-        pageNumPending = num;
-    } else {
-        pageNum = num;
-        renderPages();
-        updatePageInfo();
-    }
-}
-
-function onPrevPage() {
-    let newPageNum;
-    if (dualPageMode) {
-        newPageNum = Math.max(1, pageNum - 2);
-    } else {
-        newPageNum = Math.max(1, pageNum - 1);
+    renderPages() {
+        if (!this.pdfDoc) return;
+        this.pageRendering = true;
+        
+        if (this.pageNum <= this.pdfDoc.numPages) {
+            this.renderSinglePage(this.pageNum, this.canvas1, this.ctx1);
+        } else if (this.canvas1 && this.ctx1) {
+            this.ctx1.clearRect(0, 0, this.canvas1.width, this.canvas1.height);
+        }
+        
+        if (this.dualPageMode && this.pageNum + 1 <= this.pdfDoc.numPages) {
+            this.renderSinglePage(this.pageNum + 1, this.canvas2, this.ctx2);
+        } else if (this.canvas2 && this.ctx2) {
+            this.ctx2.clearRect(0, 0, this.canvas2.width, this.canvas2.height);
+        }
     }
     
-    if (newPageNum !== pageNum) {
-        queueRenderPages(newPageNum);
-        updateNavigationButtons();
+    renderSinglePage(num, canvas, ctx) {
+        if (!canvas || !ctx || num > this.pdfDoc.numPages) return;
+        
+        this.pdfDoc.getPage(num).then((page) => {
+            const viewport = page.getViewport({scale: this.scale});
+            canvas.height = viewport.height;
+            canvas.width = viewport.width;
+            
+            const renderContext = {
+                canvasContext: ctx,
+                viewport: viewport
+            };
+            
+            page.render(renderContext).promise.then(() => {
+                this.pageRendering = false;
+                if (this.pageNumPending !== null) {
+                    this.renderPages();
+                    this.pageNumPending = null;
+                }
+            });
+        });
+    }
+    
+    updatePageInfo() {
+        if (!this.pdfDoc) return;
+        
+        const pageInfoEl = document.getElementById(`pageInfo${this.docId}`);
+        if (!pageInfoEl) return;
+        
+        let pageText;
+        if (this.dualPageMode && this.pageNum + 1 <= this.pdfDoc.numPages) {
+            pageText = `Pages ${this.pageNum}-${this.pageNum + 1} of ${this.pdfDoc.numPages}`;
+        } else {
+            pageText = `Page ${this.pageNum} of ${this.pdfDoc.numPages}`;
+        }
+        pageInfoEl.textContent = pageText;
+    }
+    
+    onPrevPage() {
+        let newPageNum = this.dualPageMode ? 
+            Math.max(1, this.pageNum - 2) : 
+            Math.max(1, this.pageNum - 1);
+        
+        if (newPageNum !== this.pageNum) {
+            this.pageNum = newPageNum;
+            this.renderPages();
+            this.updatePageInfo();
+            this.updateNavigationButtons();
+        }
+    }
+    
+    onNextPage() {
+        let newPageNum = this.dualPageMode ? 
+            Math.min(this.pdfDoc.numPages, this.pageNum + 2) : 
+            Math.min(this.pdfDoc.numPages, this.pageNum + 1);
+        
+        if (newPageNum !== this.pageNum) {
+            this.pageNum = newPageNum;
+            this.renderPages();
+            this.updatePageInfo();
+            this.updateNavigationButtons();
+        }
+    }
+    
+    onZoomIn() {
+        this.scale = Math.min(this.scale * 1.2, 3.0);
+        this.updateZoomLevel();
+        this.renderPages();
+    }
+    
+    onZoomOut() {
+        this.scale = Math.max(this.scale * 0.8, 0.3);
+        this.updateZoomLevel();
+        this.renderPages();
+    }
+    
+    updateZoomLevel() {
+        const zoomLevelEl = document.getElementById(`zoomLevel${this.docId}`);
+        if (zoomLevelEl) {
+            zoomLevelEl.textContent = Math.round(this.scale * 100) + '%';
+        }
+    }
+    
+    togglePageMode() {
+        this.dualPageMode = !this.dualPageMode;
+        
+        const canvas2Container = document.getElementById(`canvas2Container${this.docId}`);
+        if (canvas2Container) {
+            canvas2Container.style.display = this.dualPageMode ? 'block' : 'none';
+        }
+        
+        const toggleBtn = document.getElementById(`togglePageMode${this.docId}`);
+        if (toggleBtn) {
+            toggleBtn.innerHTML = this.dualPageMode ? 
+                '<i class="bi bi-layout-split"></i> Single Page' : 
+                '<i class="bi bi-columns-gap"></i> Dual Page';
+        }
+        
+        this.renderPages();
+        this.updatePageInfo();
+        this.updateNavigationButtons();
+    }
+    
+    updateNavigationButtons() {
+        if (!this.pdfDoc) return;
+        
+        const prevBtn = document.getElementById(`prevPage${this.docId}`);
+        const nextBtn = document.getElementById(`nextPage${this.docId}`);
+        
+        if (prevBtn) prevBtn.disabled = this.pageNum <= 1;
+        
+        if (nextBtn) {
+            if (this.dualPageMode) {
+                nextBtn.disabled = this.pageNum >= this.pdfDoc.numPages - 1;
+            } else {
+                nextBtn.disabled = this.pageNum >= this.pdfDoc.numPages;
+            }
+        }
     }
 }
 
-function onNextPage() {
-    let newPageNum;
-    if (dualPageMode) {
-        newPageNum = Math.min(pdfDoc.numPages, pageNum + 2);
-    } else {
-        newPageNum = Math.min(pdfDoc.numPages, pageNum + 1);
-    }
-    
-    if (newPageNum !== pageNum) {
-        queueRenderPages(newPageNum);
-        updateNavigationButtons();
-    }
-}
-
-function togglePageMode() {
-    dualPageMode = !dualPageMode;
-    
-    // Show/hide second canvas
-    const canvas2Container = document.getElementById('canvas2Container');
-    if (canvas2Container) {
-        canvas2Container.style.display = dualPageMode ? 'block' : 'none';
-    }
-    
-    // Update button text
-    const toggleBtn = document.getElementById('togglePageMode');
-    if (toggleBtn) {
-        toggleBtn.innerHTML = dualPageMode ? 
-            '<i class="bi bi-layout-split"></i> Single Page' : 
-            '<i class="bi bi-columns-gap"></i> Dual Page';
-    }
-    
-    // Re-render pages
-    renderPages();
-    updatePageInfo();
-    updateNavigationButtons();
-}
-
-function updateNavigationButtons() {
-    if (!pdfDoc) return;
-    
-    document.getElementById('prevPage').disabled = pageNum <= 1;
-    
-    if (dualPageMode) {
-        // In dual page mode, disable next if we're on the last page or second-to-last page
-        document.getElementById('nextPage').disabled = pageNum >= pdfDoc.numPages - 1;
-    } else {
-        document.getElementById('nextPage').disabled = pageNum >= pdfDoc.numPages;
-    }
-}
-
-function onZoomIn() {
-    scale = Math.min(scale * 1.2, 3.0);
-    updateZoomLevel();
-    renderPages();
-}
-
-function onZoomOut() {
-    scale = Math.max(scale * 0.8, 0.3);
-    updateZoomLevel();
-    renderPages();
-}
-
-function updateZoomLevel() {
-    document.getElementById('zoomLevel').textContent = Math.round(scale * 100) + '%';
-}
-
-// Event listeners
+// Initialize PDF viewers for each document when modals are shown
 document.addEventListener('DOMContentLoaded', function() {
-    document.getElementById('prevPage').addEventListener('click', onPrevPage);
-    document.getElementById('nextPage').addEventListener('click', onNextPage);
-    document.getElementById('zoomIn').addEventListener('click', onZoomIn);
-    document.getElementById('zoomOut').addEventListener('click', onZoomOut);
-    
-    const toggleBtn = document.getElementById('togglePageMode');
-    if (toggleBtn) {
-        toggleBtn.addEventListener('click', togglePageMode);
+    {% set documents = contract.get_all_documents() %}
+    {% for doc in documents %}
+    {% if 'pdf' in (doc.mime_type or '') %}
+    const modal{{ doc.id }} = document.getElementById('previewModal{{ doc.id }}');
+    if (modal{{ doc.id }}) {
+        modal{{ doc.id }}.addEventListener('show.bs.modal', function() {
+            if (!pdfViewers.has({{ doc.id }})) {
+                const viewer = new PDFViewer({{ doc.id }});
+                pdfViewers.set({{ doc.id }}, viewer);
+                viewer.loadPDF('{{ url_for("contracts.download_document", contract_id=contract.id, document_id=doc.id) }}');
+            }
+        });
     }
+    {% endif %}
+    {% endfor %}
 });
 </script>
 {% endblock %}
@@ -228,6 +232,9 @@ document.addEventListener('DOMContentLoaded', function() {
             <p class="text-muted">Contract Details</p>
         </div>
         <div class="d-flex gap-2">
+            <a href="{{ url_for('contracts.upload_document', contract_id=contract.id) }}" class="btn btn-success">
+                <i class="bi bi-cloud-upload me-1"></i>Upload Document
+            </a>
             <a href="{{ url_for('contracts.edit', contract_id=contract.id) }}" class="btn btn-outline-primary">
                 <i class="bi bi-pencil me-1"></i>Edit
             </a>
@@ -324,107 +331,183 @@ document.addEventListener('DOMContentLoaded', function() {
             </div>
             <div class="card-body">
                 {% if contract.client %}
-                    <h6>{{ contract.client.name }}</h6>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Client Name</label>
+                        <p class="form-control-plaintext">{{ contract.client.name }}</p>
+                    </div>
                     {% if contract.client.organization %}
-                        <p class="text-muted">{{ contract.client.organization }}</p>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Organization</label>
+                        <p class="form-control-plaintext">{{ contract.client.organization }}</p>
+                    </div>
                     {% endif %}
-                    {% if contract.client.email %}
-                        <p><a href="mailto:{{ contract.client.email }}">{{ contract.client.email }}</a></p>
+                    <div class="row">
+                        {% if contract.client.email %}
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-bold">Email</label>
+                            <p class="form-control-plaintext">
+                                <a href="mailto:{{ contract.client.email }}" class="text-decoration-none">{{ contract.client.email }}</a>
+                            </p>
+                        </div>
+                        {% endif %}
+                        {% if contract.client.phone %}
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-bold">Phone</label>
+                            <p class="form-control-plaintext">{{ contract.client.phone }}</p>
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% if contract.client.address %}
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Address</label>
+                        <p class="form-control-plaintext">{{ contract.client.address }}</p>
+                    </div>
                     {% endif %}
-                    {% if contract.client.phone %}
-                        <p>{{ contract.client.phone }}</p>
+                    {% if contract.client.notes %}
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Notes</label>
+                        <p class="form-control-plaintext">{{ contract.client.notes }}</p>
+                    </div>
                     {% endif %}
-                    <a href="{{ url_for('clients.show', client_id=contract.client.id) }}" class="btn btn-outline-primary btn-sm">
-                        <i class="bi bi-eye me-1"></i>View Client
-                    </a>
                 {% else %}
-                    <p class="text-muted">No client assigned</p>
+                    <div class="text-center py-4">
+                        <i class="bi bi-person-x text-muted" style="font-size: 3rem;"></i>
+                        <h6 class="text-muted mt-3">No Client Assigned</h6>
+                        <p class="text-muted">This contract is not currently associated with any client.</p>
+                    </div>
                 {% endif %}
             </div>
         </div>
-        
-        {% if contract.file_name %}
-        <div class="card shadow mb-4">
-            <div class="card-header">
-                <h6 class="m-0 font-weight-bold text-primary">
-                    {% if contract.mime_type and 'pdf' in contract.mime_type %}
-                        <i class="bi bi-file-earmark-pdf me-2"></i>
-                    {% elif contract.mime_type and 'word' in contract.mime_type %}
-                        <i class="bi bi-file-earmark-word me-2"></i>
-                    {% elif contract.mime_type and 'text' in contract.mime_type %}
-                        <i class="bi bi-file-earmark-text me-2"></i>
-                    {% else %}
-                        <i class="bi bi-file-earmark me-2"></i>
-                    {% endif %}
-                    Document
-                </h6>
-            </div>
-            <div class="card-body">
-                <p class="mb-2"><strong>{{ contract.file_name }}</strong></p>
-                <p class="text-muted small">
-                    {% if contract.file_size %}
-                        {% if contract.file_size < 1024 %}
-                            {{ contract.file_size }} bytes
-                        {% elif contract.file_size < 1048576 %}
-                            {{ (contract.file_size / 1024) | round(1) }} KB
-                        {% else %}
-                            {{ (contract.file_size / 1048576) | round(1) }} MB
-                        {% endif %}
-                    {% else %}
-                        Size unknown
-                    {% endif %}
-                </p>
-                <p class="text-muted small">{{ contract.mime_type or 'Unknown type' }}</p>
-                <div class="btn-group" role="group">
-                    <a href="{{ url_for('contracts.download', contract_id=contract.id) }}" class="btn btn-outline-primary btn-sm">
-                        <i class="bi bi-download me-1"></i>Download
-                    </a>
-                    {% if contract.extracted_text or contract.mime_type and 'pdf' in contract.mime_type %}
-                        <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#previewModal">
-                            <i class="bi bi-eye me-1"></i>Preview
-                        </button>
-                    {% endif %}
-                </div>
-            </div>
-        </div>
-        {% endif %}
     </div>
 </div>
 
-<!-- Status History -->
+<!-- Documents Section (Full Width) -->
 <div class="row">
     <div class="col-12">
         <div class="card shadow">
-            <div class="card-header">
+            <div class="card-header d-flex justify-content-between align-items-center">
                 <h6 class="m-0 font-weight-bold text-primary">
-                    <i class="bi bi-clock-history me-2"></i>Status History
+                    <i class="bi bi-files me-2"></i>Contract Documents ({{ contract.get_document_count() }})
                 </h6>
+                <a href="{{ url_for('contracts.upload_document', contract_id=contract.id) }}" class="btn btn-success">
+                    <i class="bi bi-cloud-upload me-1"></i>Upload Document
+                </a>
             </div>
             <div class="card-body">
-                {% if contract.status_history %}
-                    <div class="timeline">
-                        {% for history in contract.status_history %}
-                        <div class="timeline-item mb-3">
-                            <div class="timeline-marker bg-primary"></div>
-                            <div class="timeline-content">
-                                <h6 class="timeline-title">{{ history.change_reason or 'Status changed' }}</h6>
-                                <p class="timeline-text text-muted">
-                                    Changed from 
-                                    <span class="badge bg-secondary">{{ history.old_status }}</span> 
-                                    to 
-                                    <span class="badge bg-primary">{{ history.new_status }}</span>
-                                </p>
-                                <small class="text-muted">
-                                    {{ history.changed_at.strftime('%Y-%m-%d %H:%M') if history.changed_at else 'N/A' }}
-                                </small>
+                {% set documents = contract.get_all_documents() %}
+                {% if documents %}
+                    <div class="table-responsive">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th style="width: 35%;">Document</th>
+                                    <th style="width: 12%;">Type</th>
+                                    <th style="width: 10%;">Size</th>
+                                    <th style="width: 12%;">Uploaded</th>
+                                    <th style="width: 10%;">Uploader</th>
+                                    <th style="width: 10%;">Primary</th>
+                                    <th style="width: 11%;">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for doc in documents %}
+                                <tr class="{{ 'table-success' if doc.is_primary else '' }}">
+                                    <td>
+                                        <div class="d-flex align-items-start">
+                                            <i class="{{ doc.get_file_icon() }} me-2 text-primary" style="margin-top: 0.2rem;"></i>
+                                            <div>
+                                                {% if doc.extracted_text or 'pdf' in (doc.mime_type or '') %}
+                                                    <a href="#" class="text-decoration-none fw-bold" data-bs-toggle="modal" data-bs-target="#previewModal{{ doc.id }}" title="Click to preview">
+                                                        {{ doc.original_filename }}
+                                                    </a>
+                                                {% else %}
+                                                    <strong>{{ doc.original_filename }}</strong>
+                                                {% endif %}
+                                                {% if doc.description %}
+                                                    <br><small class="text-muted">{{ doc.description }}</small>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-secondary">{{ doc.document_type|title }}</span>
+                                    </td>
+                                    <td>{{ doc.get_file_size_human() }}</td>
+                                    <td>{{ doc.uploaded_at.strftime('%Y-%m-%d') }}</td>
+                                    <td>
+                                        <small class="text-muted">{{ doc.uploader.username if doc.uploader else 'Unknown' }}</small>
+                                    </td>
+                                    <td>
+                                        {% if doc.is_primary %}
+                                            <span class="badge bg-success">
+                                                <i class="bi bi-star-fill me-1"></i>Primary
+                                            </span>
+                                        {% else %}
+                                            <form method="POST" action="{{ url_for('contracts.set_primary_document', contract_id=contract.id, document_id=doc.id) }}" class="d-inline">
+                                                <button type="submit" class="btn btn-outline-primary btn-sm">
+                                                    <i class="bi bi-star me-1"></i>Set Primary
+                                                </button>
+                                            </form>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <div class="btn-group" role="group">
+                                            <a href="{{ url_for('contracts.download_document', contract_id=contract.id, document_id=doc.id) }}" class="btn btn-outline-secondary btn-sm" title="Download">
+                                                <i class="bi bi-download"></i>
+                                            </a>
+                                            {% if doc.extracted_text or 'pdf' in (doc.mime_type or '') %}
+                                                <button type="button" class="btn btn-outline-info btn-sm" data-bs-toggle="modal" data-bs-target="#previewModal{{ doc.id }}" title="Preview">
+                                                    <i class="bi bi-eye"></i>
+                                                </button>
+                                            {% endif %}
+                                            <form method="POST" action="{{ url_for('contracts.delete_document', contract_id=contract.id, document_id=doc.id) }}" class="d-inline" onsubmit="return confirm('Are you sure you want to delete this document? This action cannot be undone.')">
+                                                <button type="submit" class="btn btn-outline-danger btn-sm" title="Delete Document">
+                                                    <i class="bi bi-trash"></i>
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <!-- Document Summary -->
+                    <div class="row mt-3">
+                        <div class="col-md-3">
+                            <div class="text-center">
+                                <h6 class="text-primary mb-1">{{ documents|length }}</h6>
+                                <small class="text-muted">Total Documents</small>
                             </div>
                         </div>
-                        {% endfor %}
+                        <div class="col-md-3">
+                            <div class="text-center">
+                                <h6 class="text-success mb-1">{{ documents|selectattr('is_primary')|list|length }}</h6>
+                                <small class="text-muted">Primary Document</small>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="text-center">
+                                <h6 class="text-info mb-1">{{ (documents|sum(attribute='file_size') / 1048576)|round(1) }} MB</h6>
+                                <small class="text-muted">Total Size</small>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="text-center">
+                                <h6 class="text-warning mb-1">{{ documents|groupby('document_type')|list|length }}</h6>
+                                <small class="text-muted">Document Types</small>
+                            </div>
+                        </div>
                     </div>
                 {% else %}
-                    <div class="text-center py-4">
-                        <i class="bi bi-clock fa-3x text-muted mb-3"></i>
-                        <p class="text-muted">No status history available.</p>
+                    <div class="text-center py-5">
+                        <i class="bi bi-file-earmark-x text-muted" style="font-size: 4rem;"></i>
+                        <h5 class="text-muted mt-3">No Documents Attached</h5>
+                        <p class="text-muted mb-4">This contract doesn't have any documents yet. Upload the main contract document and any related files.</p>
+                        <a href="{{ url_for('contracts.upload_document', contract_id=contract.id) }}" class="btn btn-success btn-lg">
+                            <i class="bi bi-cloud-upload me-2"></i>Upload First Document
+                        </a>
                     </div>
                 {% endif %}
             </div>
@@ -432,75 +515,79 @@ document.addEventListener('DOMContentLoaded', function() {
     </div>
 </div>
 
-<!-- Universal Preview Modal -->
-{% if contract.extracted_text or contract.mime_type and 'pdf' in contract.mime_type %}
-<div class="modal fade" id="previewModal" tabindex="-1" aria-labelledby="previewModalLabel" aria-hidden="true">
+<!-- Document Preview Modals -->
+{% set documents = contract.get_all_documents() %}
+{% for doc in documents %}
+{% if doc.extracted_text or 'pdf' in (doc.mime_type or '') %}
+<div class="modal fade" id="previewModal{{ doc.id }}" tabindex="-1" aria-labelledby="previewModalLabel{{ doc.id }}" aria-hidden="true">
     <div class="modal-dialog modal-xl">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title" id="previewModalLabel">
-                    <i class="bi bi-file-earmark-text me-2"></i>Document Preview
+                <h5 class="modal-title" id="previewModalLabel{{ doc.id }}">
+                    <i class="{{ doc.get_file_icon() }} me-2"></i>{{ doc.original_filename }}
                 </h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
                 <div class="mb-3">
-                    <strong>File:</strong> {{ contract.file_name }}<br>
-                    <strong>Type:</strong> {{ contract.mime_type or 'Unknown' }}<br>
-                    <strong>Size:</strong> 
-                    {% if contract.file_size %}
-                        {% if contract.file_size < 1024 %}
-                            {{ contract.file_size }} bytes
-                        {% elif contract.file_size < 1048576 %}
-                            {{ (contract.file_size / 1024) | round(1) }} KB
-                        {% else %}
-                            {{ (contract.file_size / 1048576) | round(1) }} MB
-                        {% endif %}
-                    {% else %}
-                        Size unknown
+                    <div class="row">
+                        <div class="col-md-4">
+                            <strong>File:</strong> {{ doc.original_filename }}
+                        </div>
+                        <div class="col-md-4">
+                            <strong>Type:</strong> {{ doc.document_type|title }}
+                        </div>
+                        <div class="col-md-4">
+                            <strong>Size:</strong> {{ doc.get_file_size_human() }}
+                        </div>
+                    </div>
+                    {% if doc.description %}
+                    <div class="mt-2">
+                        <strong>Description:</strong> {{ doc.description }}
+                    </div>
                     {% endif %}
                 </div>
                 <hr>
                 
                 <!-- PDF Preview -->
-                {% if contract.mime_type and 'pdf' in contract.mime_type %}
-                <div id="pdfPreview" class="text-center">
+                {% if 'pdf' in (doc.mime_type or '') %}
+                <div id="pdfPreview{{ doc.id }}" class="text-center">
                     <div class="mb-3">
                         <div class="btn-group" role="group">
-                            <button type="button" class="btn btn-outline-secondary btn-sm" id="prevPage" disabled>
+                            <button type="button" class="btn btn-outline-secondary btn-sm" id="prevPage{{ doc.id }}" disabled>
                                 <i class="bi bi-chevron-left"></i> Previous
                             </button>
-                            <span class="btn btn-outline-secondary btn-sm" id="pageInfo">Page 1 of 1</span>
-                            <button type="button" class="btn btn-outline-secondary btn-sm" id="nextPage" disabled>
+                            <span class="btn btn-outline-secondary btn-sm" id="pageInfo{{ doc.id }}">Page 1 of 1</span>
+                            <button type="button" class="btn btn-outline-secondary btn-sm" id="nextPage{{ doc.id }}" disabled>
                                 Next <i class="bi bi-chevron-right"></i>
                             </button>
                         </div>
                         <div class="btn-group ms-2" role="group">
-                            <button type="button" class="btn btn-outline-secondary btn-sm" id="zoomOut">
+                            <button type="button" class="btn btn-outline-secondary btn-sm" id="zoomOut{{ doc.id }}">
                                 <i class="bi bi-zoom-out"></i>
                             </button>
-                            <span class="btn btn-outline-secondary btn-sm" id="zoomLevel">80%</span>
-                            <button type="button" class="btn btn-outline-secondary btn-sm" id="zoomIn">
+                            <span class="btn btn-outline-secondary btn-sm" id="zoomLevel{{ doc.id }}">80%</span>
+                            <button type="button" class="btn btn-outline-secondary btn-sm" id="zoomIn{{ doc.id }}">
                                 <i class="bi bi-zoom-in"></i>
                             </button>
                         </div>
                         <div class="btn-group ms-2" role="group">
-                            <button type="button" class="btn btn-outline-secondary btn-sm" id="togglePageMode">
+                            <button type="button" class="btn btn-outline-secondary btn-sm" id="togglePageMode{{ doc.id }}">
                                 <i class="bi bi-layout-split"></i> Single Page
                             </button>
                         </div>
                     </div>
                     
-                    <div id="pdfContainer" class="d-flex justify-content-center gap-3">
-                        <div id="canvas1Container" class="flex-shrink-0">
-                            <canvas id="pdfCanvas1" class="border" style="max-height: 70vh; width: auto;"></canvas>
+                    <div id="pdfContainer{{ doc.id }}" class="d-flex justify-content-center gap-3">
+                        <div id="canvas1Container{{ doc.id }}" class="flex-shrink-0">
+                            <canvas id="pdfCanvas1_{{ doc.id }}" class="border" style="max-height: 70vh; width: auto;"></canvas>
                         </div>
-                        <div id="canvas2Container" class="flex-shrink-0">
-                            <canvas id="pdfCanvas2" class="border" style="max-height: 70vh; width: auto;"></canvas>
+                        <div id="canvas2Container{{ doc.id }}" class="flex-shrink-0">
+                            <canvas id="pdfCanvas2_{{ doc.id }}" class="border" style="max-height: 70vh; width: auto;"></canvas>
                         </div>
                     </div>
                     
-                    <div id="pdfLoading" class="text-center py-4">
+                    <div id="pdfLoading{{ doc.id }}" class="text-center py-4">
                         <div class="spinner-border text-primary" role="status">
                             <span class="visually-hidden">Loading PDF...</span>
                         </div>
@@ -509,25 +596,35 @@ document.addEventListener('DOMContentLoaded', function() {
                 </div>
                 {% endif %}
                 
-                <!-- Text Preview -->
-                {% if contract.extracted_text %}
-                <div id="textPreview" class="{% if contract.mime_type and 'pdf' in contract.mime_type %}d-none{% endif %}">
+                <!-- Text Preview (for non-PDF documents) -->
+                {% if doc.extracted_text and 'pdf' not in (doc.mime_type or '') %}
+                <div id="textPreview{{ doc.id }}">
+                    <h6 class="mb-3">Document Text Content:</h6>
                     <div class="text-preview-content" style="max-height: 400px; overflow-y: auto; font-family: monospace; font-size: 0.9em; white-space: pre-wrap;">
-                        {{ contract.extracted_text[:2000] }}{% if contract.extracted_text|length > 2000 %}...<br><br><em class="text-muted">(Preview truncated. Download full document for complete text.)</em>{% endif %}
+                        {{ doc.extracted_text[:2000] }}{% if doc.extracted_text|length > 2000 %}...<br><br><em class="text-muted">(Preview truncated. Download full document for complete text.)</em>{% endif %}
                     </div>
+                </div>
+                {% elif not doc.extracted_text and 'pdf' not in (doc.mime_type or '') %}
+                <div class="text-center py-4">
+                    <i class="bi bi-file-earmark text-muted" style="font-size: 3rem;"></i>
+                    <p class="mt-2 text-muted">No text content available for preview.</p>
+                    <a href="{{ url_for('contracts.download_document', contract_id=contract.id, document_id=doc.id) }}" class="btn btn-primary">
+                        <i class="bi bi-download me-1"></i>Download to View
+                    </a>
                 </div>
                 {% endif %}
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                <a href="{{ url_for('contracts.download', contract_id=contract.id) }}" class="btn btn-primary">
-                    <i class="bi bi-download me-1"></i>Download Full Document
+                <a href="{{ url_for('contracts.download_document', contract_id=contract.id, document_id=doc.id) }}" class="btn btn-primary">
+                    <i class="bi bi-download me-1"></i>Download Document
                 </a>
             </div>
         </div>
     </div>
 </div>
 {% endif %}
+{% endfor %}
 {% endblock %}
 
 {% block extra_css %}
