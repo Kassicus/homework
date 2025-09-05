@@ -113,7 +113,7 @@
                 </h6>
             </div>
             <div class="card-body">
-                {% if client.contracts %}
+                {% if contracts %}
                     <div class="table-responsive">
                         <table class="table table-hover">
                             <thead>
@@ -126,7 +126,7 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                {% for contract in client.contracts %}
+                                {% for contract in contracts %}
                                 <tr>
                                     <td>
                                         <a href="{{ url_for('contracts.show', contract_id=contract.id) }}" class="text-decoration-none">
@@ -168,6 +168,28 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Client deletion function
+function confirmDeleteClient(clientId, clientName) {
+    if (confirm(`Are you sure you want to delete "${clientName}"? This action cannot be undone.`)) {
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = `/clients/${clientId}/delete`;
+        
+        const csrfToken = document.createElement('input');
+        csrfToken.type = 'hidden';
+        csrfToken.name = 'csrf_token';
+        csrfToken.value = '{{ csrf_token() }}';
+        
+        form.appendChild(csrfToken);
+        document.body.appendChild(form);
+        form.submit();
+    }
+}
+</script>
 {% endblock %}
 
 {% block extra_css %}

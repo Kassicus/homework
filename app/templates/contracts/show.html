@@ -295,6 +295,24 @@ document.addEventListener('DOMContentLoaded', function() {
         updateDocumentSelector();
     }
 });
+
+// Contract deletion function
+function confirmDelete(contractId, contractTitle) {
+    if (confirm(`Are you sure you want to delete "${contractTitle}"? This action cannot be undone.`)) {
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = `/contracts/${contractId}/delete`;
+        
+        const csrfToken = document.createElement('input');
+        csrfToken.type = 'hidden';
+        csrfToken.name = 'csrf_token';
+        csrfToken.value = '{{ csrf_token() }}';
+        
+        form.appendChild(csrfToken);
+        document.body.appendChild(form);
+        form.submit();
+    }
+}
 </script>
 {% endblock %}
 

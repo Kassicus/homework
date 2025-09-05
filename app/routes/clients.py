@@ -219,12 +219,22 @@ def delete(client_id):
     try:
         client = Client.query.get_or_404(client_id)
 
-        # Check if client has contracts
-        if client.contracts.count() > 0:
-            flash(
-                f'Cannot delete client "{client.name}" because they have {client.contracts.count()} contract(s).',
-                "error",
-            )
+        # Check if client has ANY contracts (including soft-deleted ones)
+        # We cannot delete a client if they have any contracts due to foreign key constraints
+        total_contract_count = client.contracts.count()
+        active_contract_count = client.contract_count
+        
+        if total_contract_count > 0:
+            if active_contract_count > 0:
+                flash(
+                    f'Cannot delete client "{client.name}" because they have {active_contract_count} active contract(s). Please delete all contracts first.',
+                    "error",
+                )
+            else:
+                flash(
+                    f'Cannot delete client "{client.name}" because they have soft-deleted contracts. Please permanently delete all contracts from the admin panel first.',
+                    "error",
+                )
             return redirect(url_for("clients.show", client_id=client.id))
 
         client_name = client.name

@@ -32,7 +32,7 @@ class Client(db.Model):
     def to_dict(self):
         """Convert client to dictionary for API responses"""
         try:
-            contract_count = self.contracts.count()
+            contract_count = self.contracts.filter_by(deleted_at=None).count()
         except Exception:
             # Fallback to direct database query if relationship fails
             from app.models.contract import Contract

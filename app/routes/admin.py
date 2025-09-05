@@ -131,11 +131,20 @@ def contracts():
         per_page = request.args.get("per_page", 100, type=int)
         show_deleted = request.args.get("show_deleted", False, type=bool)
         
-        # Get contracts including deleted ones for admin
+        # Get contracts based on show_deleted parameter
         from app.services.contract_service import ContractService
-        contracts = ContractService.get_all_contracts(
-            include_deleted=True, page=page, per_page=per_page
-        )
+        from app.models.contract import Contract
+        
+        if show_deleted:
+            # When showing deleted contracts, get only soft-deleted ones
+            query = Contract.query.filter(Contract.deleted_at.isnot(None))
+            query = query.order_by(Contract.deleted_at.desc())
+            contracts = query.paginate(page=page, per_page=per_page, error_out=False)
+        else:
+            # When showing active contracts, exclude deleted ones
+            contracts = ContractService.get_all_contracts(
+                include_deleted=False, page=page, per_page=per_page
+            )
         
         return render_template(
             "admin/contracts.html",
@@ -206,6 +215,64 @@ def toggle_admin(user_id):
         flash("An error occurred while updating user privileges.", "error")
     
     return redirect(url_for("admin.users"))
+
+
+@admin_bp.route("/cleanup/contracts", methods=["POST"])
+@login_required
+@admin_required
+def cleanup_soft_deleted_contracts():
+    """Manually cleanup soft-deleted contracts"""
+    try:
+        from app.services.cleanup_service import cleanup_service
+        
+        # Allow manual cleanup of contracts deleted more than 1 day ago (instead of 30 days)
+        deleted_count = cleanup_service.cleanup_soft_deleted_contracts(days=1)
+        
+        if deleted_count > 0:
+            flash(f"Successfully permanently deleted {deleted_count} soft-deleted contract(s).", "success")
+        else:
+            flash("No soft-deleted contracts found for cleanup.", "info")
+            
+    except Exception as e:
+        logger.error(f"Error during manual contract cleanup: {e}")
+        flash("An error occurred during cleanup.", "error")
+    
+    return redirect(url_for("admin.contracts"))
+
+
+@admin_bp.route("/contracts/<int:contract_id>/hard-delete", methods=["POST"])
+@login_required
+@admin_required
+def hard_delete_contract(contract_id):
+    """Permanently delete a specific soft-deleted contract"""
+    try:
+        from app.models.contract import Contract
+        from app import db
+        
+        # Get the contract and verify it's soft-deleted
+        contract = Contract.query.get_or_404(contract_id)
+        
+        if not contract.deleted_at:
+            flash("Contract is not soft-deleted and cannot be permanently deleted.", "error")
+            return redirect(url_for("admin.contracts", show_deleted=True))
+        
+        # Store contract info for logging before deletion
+        contract_title = contract.title
+        contract_id_for_log = contract.id
+        
+        # Delete the contract permanently (this will cascade to related records)
+        db.session.delete(contract)
+        db.session.commit()
+        
+        logger.info(f"Contract permanently deleted by admin: {contract_title} (ID: {contract_id_for_log}) by user {current_user.username}")
+        flash(f'Contract "{contract_title}" has been permanently deleted.', "success")
+        
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Error permanently deleting contract {contract_id}: {e}")
+        flash("An error occurred while permanently deleting the contract.", "error")
+    
+    return redirect(url_for("admin.contracts", show_deleted=True))
 
 
 def get_admin_dashboard_data():

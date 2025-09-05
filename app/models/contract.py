@@ -72,12 +72,14 @@ class Contract(db.Model):
         backref="contract",
         lazy="dynamic",
         order_by="ContractStatusHistory.changed_at.desc()",
+        cascade="all, delete-orphan",
     )
     access_history = db.relationship(
         "ContractAccessHistory",
         backref="contract",
         lazy="dynamic",
         order_by="ContractAccessHistory.accessed_at.desc()",
+        cascade="all, delete-orphan",
     )
 
     # Status constants
